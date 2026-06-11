@@ -1,0 +1,2 @@
+const supabaseUrl = 'https://nvoikmtnorctvphsddrm.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52b2lrbXRub3JjdHZwaHNkZHJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMTI0ODksImV4cCI6MjA5NjY4ODQ4OX0.k3dzWjo3agHPbj7i5r84gbc7WcMfw-_XrmpYB6P_fdo';
