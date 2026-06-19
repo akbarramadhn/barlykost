@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../services/auth_service.dart';
 import '../auth/login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -15,392 +14,886 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final SupabaseClient supabase = Supabase.instance.client;
 
-  bool isLoading = true;
-  String? errorMessage;
+  late Future<AdminDashboardData> dashboardFuture;
 
-  String adminName = 'Admin';
-
-  int totalKost = 0;
-  int totalBookingBulanIni = 0;
-  int totalUserAktif = 0;
-  double pendapatanBulanIni = 0;
-
-  List<Map<String, dynamic>> latestBookings = [];
-  List<Map<String, dynamic>> users = [];
-  List<Map<String, dynamic>> kosts = [];
+  static const Color darkTeal = ThemeApp.buttonColor;
+  static const Color softBlue = Color(0xFFD8ECFF);
+  static const Color cardWhite = Colors.white;
 
   @override
   void initState() {
     super.initState();
-    loadDashboardData();
+    dashboardFuture = loadDashboardData();
   }
 
-  Future<void> loadDashboardData() async {
+  Future<void> refreshDashboard() async {
+    setState(() {
+      dashboardFuture = loadDashboardData();
+    });
+
+    await dashboardFuture;
+  }
+
+  Future<AdminDashboardData> loadDashboardData() async {
+    final adminProfile = await fetchAdminProfile();
+    final users = await fetchUsers();
+    final kosts = await fetchKosts();
+    final bookings = await fetchBookings();
+    final payments = await fetchPayments();
+
+    final totalPenyewa = users.where((user) {
+      return user.role.toLowerCase() == 'penyewa';
+    }).length;
+
+    final totalAdmin = users.where((user) {
+      return user.role.toLowerCase() == 'admin';
+    }).length;
+
+    final totalKost = kosts.length;
+
+    final totalKamarTersedia = kosts.fold<int>(0, (previous, kost) {
+      return previous + kost.available;
+    });
+
+    final totalPesanan = bookings.length;
+
+    final totalPendapatan = payments.fold<int>(0, (previous, payment) {
+      return previous + payment.amount;
+    });
+
+    return AdminDashboardData(
+      adminName: adminProfile.name,
+      totalPenyewa: totalPenyewa,
+      totalAdmin: totalAdmin,
+      totalKost: totalKost,
+      totalKamarTersedia: totalKamarTersedia,
+      totalPesanan: totalPesanan,
+      totalPendapatan: totalPendapatan,
+      kosts: kosts,
+      bookings: bookings,
+    );
+  }
+
+  Future<AdminProfile> fetchAdminProfile() async {
+    final authUser = supabase.auth.currentUser;
+
+    if (authUser == null) {
+      return const AdminProfile(
+        name: 'Admin',
+        email: '',
+      );
+    }
+
+    final email = authUser.email ?? '';
+
     try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
+      final response = await supabase
+          .from('users')
+          .select('id, full_name, email, role')
+          .eq('email', email)
+          .maybeSingle();
 
-      await loadAdminData();
-
-      final List<Map<String, dynamic>> kostRows = await fetchRows('kosts');
-      final List<Map<String, dynamic>> bookingRows = await fetchRows('bookings');
-      final List<Map<String, dynamic>> userRows = await fetchRows('users');
-      final List<Map<String, dynamic>> paymentRows = await fetchRows('payments');
-
-      final DateTime now = DateTime.now();
-
-      final List<Map<String, dynamic>> bookingBulanIni =
-          bookingRows.where((booking) {
-        final DateTime? date = readDate(
-          booking,
-          [
-            'created_at',
-            'booking_date',
-            'tanggal_pemesanan',
-            'start_date',
-            'check_in_date',
-          ],
+      if (response == null) {
+        return AdminProfile(
+          name: getNameFromAuth(authUser),
+          email: email,
         );
-
-        if (date == null) {
-          return true;
-        }
-
-        return date.month == now.month && date.year == now.year;
-      }).toList();
-
-      final List<Map<String, dynamic>> paymentBulanIni =
-          paymentRows.where((payment) {
-        final DateTime? date = readDate(
-          payment,
-          [
-            'created_at',
-            'payment_date',
-            'paid_at',
-            'tanggal_pembayaran',
-          ],
-        );
-
-        if (date == null) {
-          return true;
-        }
-
-        return date.month == now.month && date.year == now.year;
-      }).toList();
-
-      double totalRevenue = 0;
-
-      for (final Map<String, dynamic> payment in paymentBulanIni) {
-        if (isSuccessPayment(payment)) {
-          totalRevenue += readDouble(
-            payment,
-            [
-              'total_amount',
-              'amount',
-              'total_payment',
-              'total_pembayaran',
-              'total_price',
-              'price',
-              'nominal',
-            ],
-          );
-        }
       }
 
-      bookingRows.sort((a, b) {
-        final DateTime dateA = readDate(
-              a,
-              [
-                'created_at',
-                'booking_date',
-                'tanggal_pemesanan',
-                'start_date',
-              ],
-            ) ??
-            DateTime(2000);
+      return AdminProfile(
+        name: response['full_name']?.toString() ?? getNameFromAuth(authUser),
+        email: response['email']?.toString() ?? email,
+      );
+    } catch (error) {
+      debugPrint('Fetch admin profile error: $error');
 
-        final DateTime dateB = readDate(
-              b,
-              [
-                'created_at',
-                'booking_date',
-                'tanggal_pemesanan',
-                'start_date',
-              ],
-            ) ??
-            DateTime(2000);
-
-        return dateB.compareTo(dateA);
-      });
-
-      setState(() {
-        kosts = kostRows;
-        users = userRows;
-        latestBookings = bookingRows.take(3).toList();
-
-        totalKost = kostRows.length;
-        totalBookingBulanIni = bookingBulanIni.length;
-
-        totalUserAktif = userRows.where((user) {
-          final String role = readString(
-            user,
-            ['role'],
-            defaultValue: '',
-          ).toLowerCase();
-
-          return role != 'admin';
-        }).length;
-
-        pendapatanBulanIni = totalRevenue;
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        isLoading = false;
-        errorMessage = e.toString().replaceAll('Exception: ', '');
-      });
+      return AdminProfile(
+        name: getNameFromAuth(authUser),
+        email: email,
+      );
     }
   }
 
-  Future<void> loadAdminData() async {
-    final User? currentUser = supabase.auth.currentUser;
+  Future<List<UserModel>> fetchUsers() async {
+    try {
+      final response = await supabase
+          .from('users')
+          .select('id, role, email, phone, full_name, created_at')
+          .order('created_at', ascending: false);
 
-    if (currentUser == null) {
+      final List<dynamic> data = response as List<dynamic>;
+
+      return data.map((item) {
+        final row = Map<String, dynamic>.from(item as Map);
+        return UserModel.fromMap(row);
+      }).toList();
+    } catch (error) {
+      debugPrint('Fetch users error: $error');
+      return [];
+    }
+  }
+
+  Future<List<KostModel>> fetchKosts() async {
+    try {
+      final response = await supabase
+          .from('kosts')
+          .select(
+            'id, harga, lokasi, rating, owner_id, tersedia, deskripsi, nama_kost, created_at',
+          )
+          .order('created_at', ascending: false);
+
+      final List<dynamic> data = response as List<dynamic>;
+
+      return data.map((item) {
+        final row = Map<String, dynamic>.from(item as Map);
+        return KostModel.fromMap(row);
+      }).toList();
+    } catch (error) {
+      debugPrint('Fetch kosts error: $error');
+      return [];
+    }
+  }
+
+  Future<List<BookingModel>> fetchBookings() async {
+    try {
+      final response = await supabase.from('bookings').select();
+
+      final List<dynamic> data = response as List<dynamic>;
+
+      final bookings = data.map((item) {
+        final row = Map<String, dynamic>.from(item as Map);
+        return BookingModel.fromMap(row);
+      }).toList();
+
+      bookings.sort((a, b) {
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
+      return bookings;
+    } catch (error) {
+      debugPrint('Fetch bookings error: $error');
+      return [];
+    }
+  }
+
+  Future<List<PaymentModel>> fetchPayments() async {
+    try {
+      final response = await supabase.from('payments').select();
+
+      final List<dynamic> data = response as List<dynamic>;
+
+      return data.map((item) {
+        final row = Map<String, dynamic>.from(item as Map);
+        return PaymentModel.fromMap(row);
+      }).toList();
+    } catch (error) {
+      debugPrint('Fetch payments error: $error');
+      return [];
+    }
+  }
+
+  String getNameFromAuth(User user) {
+    final metadata = user.userMetadata;
+
+    final nameFromMetadata = metadata?['full_name'] ??
+        metadata?['name'] ??
+        metadata?['nama'] ??
+        metadata?['username'];
+
+    if (nameFromMetadata != null &&
+        nameFromMetadata.toString().trim().isNotEmpty) {
+      return nameFromMetadata.toString().trim();
+    }
+
+    final email = user.email ?? '';
+
+    if (email.contains('@')) {
+      final nameFromEmail = email.split('@').first.replaceAll('.', ' ');
+      return capitalizeName(nameFromEmail);
+    }
+
+    return 'Admin';
+  }
+
+  Future<void> logout() async {
+    await supabase.auth.signOut();
+
+    if (!mounted) {
       return;
     }
 
-    Map<String, dynamic>? adminData = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', currentUser.id)
-        .maybeSingle();
-
-    adminData ??= await supabase
-        .from('users')
-        .select('*')
-        .ilike('email', currentUser.email ?? '')
-        .maybeSingle();
-
-    if (adminData != null) {
-      adminName = readString(
-        adminData,
-        ['full_name', 'name', 'nama_lengkap'],
-        defaultValue: 'Admin',
-      );
-    }
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const LoginScreen(),
+      ),
+      (route) => false,
+    );
   }
 
-  Future<List<Map<String, dynamic>>> fetchRows(String tableName) async {
-    final dynamic response = await supabase.from(tableName).select('*');
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: ThemeApp.primaryDark,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: ThemeApp.backgroundGradient,
+        child: SafeArea(
+          child: FutureBuilder<AdminDashboardData>(
+            future: dashboardFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    color: darkTeal,
+                  ),
+                );
+              }
 
-    return (response as List)
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .toList();
-  }
+              final data = snapshot.data ?? AdminDashboardData.empty();
 
-  Future<void> logout(BuildContext context) async {
-    final AuthService authService = AuthService();
-
-    try {
-      await authService.logout();
-
-      if (!context.mounted) return;
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
-        ),
-        (route) => false,
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.toString().replaceAll('Exception: ', ''),
+              return RefreshIndicator(
+                color: darkTeal,
+                onRefresh: refreshDashboard,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      buildHeader(data),
+                      const SizedBox(height: 22),
+                      buildWelcomeCard(data),
+                      const SizedBox(height: 18),
+                      buildStatisticGrid(data),
+                      const SizedBox(height: 24),
+                      buildSectionHeader(
+                        title: 'Data Kost',
+                        actionText: 'Lihat Semua',
+                        onTap: () {},
+                      ),
+                      const SizedBox(height: 12),
+                      buildKostList(data.kosts),
+                      const SizedBox(height: 24),
+                      buildSectionHeader(
+                        title: 'Pesanan Terbaru',
+                        actionText: 'Lihat Semua',
+                        onTap: () {},
+                      ),
+                      const SizedBox(height: 12),
+                      buildBookingList(data.bookings),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-          backgroundColor: Colors.red,
         ),
+      ),
+    );
+  }
+
+  Widget buildHeader(AdminDashboardData data) {
+    return Row(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: const Color(0xFFD1E9B7),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white,
+              width: 2,
+            ),
+          ),
+          child: const Icon(
+            Icons.admin_panel_settings_rounded,
+            color: darkTeal,
+            size: 30,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Dashboard Admin',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                data.adminName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: logout,
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.85),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.logout_rounded,
+              color: darkTeal,
+              size: 25,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget buildWelcomeCard(AdminDashboardData data) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.88),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x18000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: softBlue,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(
+              Icons.home_work_rounded,
+              color: darkTeal,
+              size: 31,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Selamat datang kembali!',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Kelola data kost, penyewa, dan pesanan Barly Kost.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildStatisticGrid(AdminDashboardData data) {
+    final stats = [
+      StatisticModel(
+        title: 'Total Penyewa',
+        value: data.totalPenyewa.toString(),
+        icon: Icons.people_alt_rounded,
+      ),
+      StatisticModel(
+        title: 'Total Kost',
+        value: data.totalKost.toString(),
+        icon: Icons.home_work_rounded,
+      ),
+      StatisticModel(
+        title: 'Total Pesanan',
+        value: data.totalPesanan.toString(),
+        icon: Icons.receipt_long_rounded,
+      ),
+      StatisticModel(
+        title: 'Kamar Tersedia',
+        value: data.totalKamarTersedia.toString(),
+        icon: Icons.meeting_room_rounded,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const double gap = 14;
+        final double cardWidth = (constraints.maxWidth - gap) / 2;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: stats.map((stat) {
+            return SizedBox(
+              width: cardWidth,
+              child: buildStatisticCard(stat),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget buildStatisticCard(StatisticModel stat) {
+    return Container(
+      height: 108,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardWhite,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 14,
+            offset: Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 45,
+            height: 45,
+            decoration: BoxDecoration(
+              color: softBlue,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              stat.icon,
+              color: darkTeal,
+              size: 27,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  stat.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  stat.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildSectionHeader({
+    required String title,
+    required String actionText,
+    required VoidCallback onTap,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.88),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              actionText,
+              style: const TextStyle(
+                color: darkTeal,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget buildKostList(List<KostModel> kosts) {
+    if (kosts.isEmpty) {
+      return buildEmptyCard(
+        icon: Icons.home_work_outlined,
+        text: 'Data kost belum tersedia',
       );
     }
+
+    return Column(
+      children: kosts.take(3).map((kost) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: buildKostCard(kost),
+        );
+      }).toList(),
+    );
   }
 
-  String readString(
-    Map<String, dynamic> data,
-    List<String> keys, {
-    String defaultValue = '-',
+  Widget buildKostCard(KostModel kost) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardWhite,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 14,
+            offset: Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              color: softBlue,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(
+              Icons.home_rounded,
+              color: darkTeal,
+              size: 34,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  kost.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      color: Color(0xFF6AB8FF),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        kost.location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  '${formatRupiah(kost.price)} /bulan',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: darkTeal,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.star_rounded,
+                    color: Color(0xFFFFB000),
+                    size: 19,
+                  ),
+                  const SizedBox(width: 3),
+                  Text(
+                    kost.rating.toStringAsFixed(1),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: softBlue,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  '${kost.available} kosong',
+                  style: const TextStyle(
+                    color: darkTeal,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildBookingList(List<BookingModel> bookings) {
+    if (bookings.isEmpty) {
+      return buildEmptyCard(
+        icon: Icons.receipt_long_outlined,
+        text: 'Belum ada pesanan masuk',
+      );
+    }
+
+    return Column(
+      children: bookings.take(3).map((booking) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: buildBookingCard(booking),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget buildBookingCard(BookingModel booking) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardWhite,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 14,
+            offset: Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: softBlue,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.receipt_long_rounded,
+              color: darkTeal,
+              size: 29,
+            ),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  booking.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  booking.createdAtText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 6,
+            ),
+            decoration: BoxDecoration(
+              color: softBlue,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              booking.status,
+              style: const TextStyle(
+                color: darkTeal,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildEmptyCard({
+    required IconData icon,
+    required String text,
   }) {
-    for (final String key in keys) {
-      final dynamic value = data[key];
-
-      if (value != null && value.toString().trim().isNotEmpty) {
-        return value.toString();
-      }
-    }
-
-    return defaultValue;
-  }
-
-  double readDouble(
-    Map<String, dynamic> data,
-    List<String> keys,
-  ) {
-    for (final String key in keys) {
-      final dynamic value = data[key];
-
-      if (value == null) {
-        continue;
-      }
-
-      if (value is num) {
-        return value.toDouble();
-      }
-
-      final String cleanValue = value
-          .toString()
-          .replaceAll('Rp', '')
-          .replaceAll('.', '')
-          .replaceAll(',', '')
-          .trim();
-
-      return double.tryParse(cleanValue) ?? 0;
-    }
-
-    return 0;
-  }
-
-  DateTime? readDate(
-    Map<String, dynamic> data,
-    List<String> keys,
-  ) {
-    for (final String key in keys) {
-      final dynamic value = data[key];
-
-      if (value == null) {
-        continue;
-      }
-
-      final DateTime? parsedDate = DateTime.tryParse(value.toString());
-
-      if (parsedDate != null) {
-        return parsedDate;
-      }
-    }
-
-    return null;
-  }
-
-  bool isSuccessPayment(Map<String, dynamic> payment) {
-    final String status = readString(
-      payment,
-      ['status', 'payment_status'],
-      defaultValue: '',
-    ).toLowerCase();
-
-    if (status.isEmpty) {
-      return true;
-    }
-
-    if (status.contains('paid') ||
-        status.contains('success') ||
-        status.contains('berhasil') ||
-        status.contains('selesai') ||
-        status.contains('confirmed') ||
-        status.contains('dikonfirmasi') ||
-        status.contains('verified')) {
-      return true;
-    }
-
-    return false;
-  }
-
-  String getUserName(Map<String, dynamic> booking) {
-    final String directName = readString(
-      booking,
-      [
-        'full_name',
-        'name',
-        'tenant_name',
-        'nama_penyewa',
-        'user_name',
-      ],
-      defaultValue: '',
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: darkTeal,
+            size: 27,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
-
-    if (directName.isNotEmpty) {
-      return directName;
-    }
-
-    final String userId = readString(
-      booking,
-      [
-        'user_id',
-        'penyewa_id',
-        'tenant_id',
-      ],
-      defaultValue: '',
-    );
-
-    for (final Map<String, dynamic> user in users) {
-      if (readString(user, ['id'], defaultValue: '') == userId) {
-        return readString(
-          user,
-          ['full_name', 'name', 'nama_lengkap'],
-          defaultValue: 'Penyewa',
-        );
-      }
-    }
-
-    return 'Penyewa';
   }
 
-  String getKostName(Map<String, dynamic> booking) {
-    final String directKostName = readString(
-      booking,
-      [
-        'kost_name',
-        'nama_kost',
-        'kost',
-      ],
-      defaultValue: '',
-    );
+  static String formatRupiah(int value) {
+    final text = value.toString();
+    final reversed = text.split('').reversed.toList();
+    final buffer = StringBuffer();
 
-    if (directKostName.isNotEmpty) {
-      return directKostName;
-    }
-
-    final String kostId = readString(
-      booking,
-      [
-        'kost_id',
-        'boarding_house_id',
-      ],
-      defaultValue: '',
-    );
-
-    for (final Map<String, dynamic> kost in kosts) {
-      if (readString(kost, ['id'], defaultValue: '') == kostId) {
-        return readString(
-          kost,
-          ['name', 'kost_name', 'nama_kost', 'title'],
-          defaultValue: 'Kost',
-        );
+    for (int i = 0; i < reversed.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        buffer.write('.');
       }
+
+      buffer.write(reversed[i]);
     }
 
-    return 'Kost';
+    final result = buffer.toString().split('').reversed.join();
+    return 'Rp $result';
   }
 
-  String formatDate(DateTime? date) {
-    if (date == null) {
+  static String formatDate(dynamic value) {
+    if (value == null) {
       return '-';
     }
 
-    const List<String> months = [
+    final parsedDate = DateTime.tryParse(value.toString());
+
+    if (parsedDate == null) {
+      return value.toString();
+    }
+
+    const months = [
       'Januari',
       'Februari',
       'Maret',
@@ -415,833 +908,199 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'Desember',
     ];
 
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    return '${parsedDate.day} ${months[parsedDate.month - 1]} ${parsedDate.year}';
   }
 
-  String formatRupiah(double value) {
-    final String number = value.toInt().toString();
-    final StringBuffer result = StringBuffer();
+  static String capitalizeName(String value) {
+    return value
+        .split(' ')
+        .where((word) => word.trim().isNotEmpty)
+        .map((word) {
+      final cleanWord = word.trim();
 
-    int counter = 0;
-
-    for (int i = number.length - 1; i >= 0; i--) {
-      result.write(number[i]);
-      counter++;
-
-      if (counter == 3 && i != 0) {
-        result.write('.');
-        counter = 0;
+      if (cleanWord.length == 1) {
+        return cleanWord.toUpperCase();
       }
-    }
 
-    return result.toString().split('').reversed.join();
-  }
-
-  String formatStatus(String status) {
-    final String lowerStatus = status.toLowerCase();
-
-    if (lowerStatus.contains('waiting') ||
-        lowerStatus.contains('pending') ||
-        lowerStatus.contains('menunggu')) {
-      return 'Menunggu\nPembayaran';
-    }
-
-    if (lowerStatus.contains('confirm') ||
-        lowerStatus.contains('dikonfirmasi') ||
-        lowerStatus.contains('verified')) {
-      return 'Dikonfirmasi';
-    }
-
-    if (lowerStatus.contains('complete') || lowerStatus.contains('selesai')) {
-      return 'Selesai';
-    }
-
-    if (lowerStatus.contains('cancel') || lowerStatus.contains('batal')) {
-      return 'Dibatalkan';
-    }
-
-    if (lowerStatus.contains('reject') || lowerStatus.contains('tolak')) {
-      return 'Ditolak';
-    }
-
-    if (status.trim().isEmpty) {
-      return 'Menunggu';
-    }
-
-    return status;
-  }
-
-  Color statusTextColor(String status) {
-    final String lowerStatus = status.toLowerCase();
-
-    if (lowerStatus.contains('waiting') ||
-        lowerStatus.contains('pending') ||
-        lowerStatus.contains('menunggu')) {
-      return const Color(0xFFB26300);
-    }
-
-    if (lowerStatus.contains('confirm') ||
-        lowerStatus.contains('dikonfirmasi') ||
-        lowerStatus.contains('verified')) {
-      return const Color(0xFF2DA44E);
-    }
-
-    if (lowerStatus.contains('complete') || lowerStatus.contains('selesai')) {
-      return const Color(0xFF235BFF);
-    }
-
-    if (lowerStatus.contains('cancel') ||
-        lowerStatus.contains('batal') ||
-        lowerStatus.contains('reject') ||
-        lowerStatus.contains('tolak')) {
-      return Colors.red;
-    }
-
-    return Colors.grey;
-  }
-
-  Color statusBackgroundColor(String status) {
-    final String lowerStatus = status.toLowerCase();
-
-    if (lowerStatus.contains('waiting') ||
-        lowerStatus.contains('pending') ||
-        lowerStatus.contains('menunggu')) {
-      return const Color(0xFFFFDFA8);
-    }
-
-    if (lowerStatus.contains('confirm') ||
-        lowerStatus.contains('dikonfirmasi') ||
-        lowerStatus.contains('verified')) {
-      return const Color(0xFFD8F2DC);
-    }
-
-    if (lowerStatus.contains('complete') || lowerStatus.contains('selesai')) {
-      return const Color(0xFFDDE6FF);
-    }
-
-    if (lowerStatus.contains('cancel') ||
-        lowerStatus.contains('batal') ||
-        lowerStatus.contains('reject') ||
-        lowerStatus.contains('tolak')) {
-      return const Color(0xFFFFDADA);
-    }
-
-    return const Color(0xFFE8E8E8);
-  }
-
-  Color bookingIconColor(int index) {
-    if (index == 0) {
-      return const Color(0xFF4D35E8);
-    }
-
-    if (index == 1) {
-      return const Color(0xFF2DA44E);
-    }
-
-    return const Color(0xFFFF8A22);
-  }
-
-  Color bookingIconBackground(int index) {
-    if (index == 0) {
-      return const Color(0xFFDCD4FF);
-    }
-
-    if (index == 1) {
-      return const Color(0xFFD8F2DC);
-    }
-
-    return const Color(0xFFFFE1C6);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      bottomNavigationBar: const AdminBottomNavigation(),
-      body: SafeArea(
-        child: isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  color: ThemeApp.primaryDark,
-                ),
-              )
-            : errorMessage != null
-                ? buildErrorView()
-                : buildDashboardContent(),
-      ),
-    );
-  }
-
-  Widget buildErrorView() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: Colors.red,
-              size: 60,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Gagal memuat dashboard',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: ThemeApp.textDark,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              errorMessage ?? '',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: ThemeApp.textGrey,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 18),
-            ElevatedButton(
-              onPressed: loadDashboardData,
-              child: const Text('Coba Lagi'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildDashboardContent() {
-    return RefreshIndicator(
-      color: ThemeApp.primaryDark,
-      onRefresh: loadDashboardData,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            buildHeader(),
-            const SizedBox(height: 28),
-            buildWelcomeCard(),
-            const SizedBox(height: 32),
-
-            const Text(
-              'Ringkasan',
-              style: TextStyle(
-                fontSize: 22,
-                color: Color(0xFF080B17),
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
-                Expanded(
-                  child: SummaryCard(
-                    icon: Icons.apartment_rounded,
-                    iconColor: Color(0xFF5846B8),
-                    iconBackground: Color(0xFFDCD4FF),
-                    value: totalKost.toString(),
-                    title: 'Total\nKamar',
-                    subtitle: 'Aktif',
-                    subtitleColor: Color(0xFF4D35E8),
-                  ),
-                ),
-                SizedBox(width: 14),
-                Expanded(
-                  child: SummaryCard(
-                    icon: Icons.assignment_rounded,
-                    iconColor: Color(0xFF2DA44E),
-                    iconBackground: Color(0xFFD8F2DC),
-                    value: totalBookingBulanIni.toString(),
-                    title: 'Total\nPesanan',
-                    subtitle: 'Bulan ini',
-                    subtitleColor: Color(0xFF2DA44E),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            Row(
-              children: [
-                Expanded(
-                  child: SummaryCard(
-                    icon: Icons.person_outline_rounded,
-                    iconColor: Color(0xFFC07A46),
-                    iconBackground: Color(0xFFFFE1C6),
-                    value: totalUserAktif.toString(),
-                    title: 'Total\nPenyewa',
-                    subtitle: 'Aktif',
-                    subtitleColor: Color(0xFF4D35E8),
-                  ),
-                ),
-                SizedBox(width: 14),
-                Expanded(
-                  child: SummaryCard(
-                    icon: Icons.account_balance_wallet_rounded,
-                    iconColor: Color(0xFF235BFF),
-                    iconBackground: Color(0xFFDDE6FF),
-                    value: formatRupiah(pendapatanBulanIni),
-                    title: 'Pendapatan',
-                    subtitle: 'Bulan ini',
-                    subtitleColor: Color(0xFF235BFF),
-                    isMoney: true,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 36),
-
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Pemesanan Terbaru',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 21,
-                      color: Color(0xFF080B17),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Halaman semua pemesanan belum dibuat',
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Lihat semua',
-                    style: TextStyle(
-                      color: Color(0xFF4D35E8),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            latestBookings.isEmpty
-                ? const EmptyBookingCard()
-                : Column(
-                    children: latestBookings.asMap().entries.map((entry) {
-                      final int index = entry.key;
-                      final Map<String, dynamic> booking = entry.value;
-
-                      final DateTime? bookingDate = readDate(
-                        booking,
-                        [
-                          'created_at',
-                          'booking_date',
-                          'tanggal_pemesanan',
-                          'start_date',
-                        ],
-                      );
-
-                      final String rawStatus = readString(
-                        booking,
-                        ['status', 'booking_status'],
-                        defaultValue: 'Menunggu',
-                      );
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: BookingItem(
-                          name: getUserName(booking),
-                          kostName: getKostName(booking),
-                          date: formatDate(bookingDate),
-                          status: formatStatus(rawStatus),
-                          statusTextColor: statusTextColor(rawStatus),
-                          statusBackgroundColor:
-                              statusBackgroundColor(rawStatus),
-                          iconColor: bookingIconColor(index),
-                          iconBackground: bookingIconBackground(index),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildHeader() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Dashboard',
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF080B17),
-                  letterSpacing: -0.4,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                adminName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF4D35E8),
-                ),
-              ),
-            ],
-          ),
-        ),
-        IconButton(
-          onPressed: () => logout(context),
-          icon: const Icon(
-            Icons.logout_rounded,
-            color: Color(0xFF080B17),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget buildWelcomeCard() {
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(
-        minHeight: 172,
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 24,
-        vertical: 22,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            Color(0xFF147F75),
-            Color(0xFF5CE7D1),
-          ],
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -8,
-            bottom: -10,
-            child: Icon(
-              Icons.home_work_outlined,
-              size: 108,
-              color: Colors.white.withOpacity(0.24),
-            ),
-          ),
-          SizedBox(
-            width: double.infinity,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 82),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Selamat datang,',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    '$adminName 👋',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 25,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Kelola data kost dan pemesanan\ndengan mudah.',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      height: 1.3,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+      return cleanWord[0].toUpperCase() + cleanWord.substring(1).toLowerCase();
+    }).join(' ');
   }
 }
 
-class SummaryCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBackground;
-  final String value;
-  final String title;
-  final String subtitle;
-  final Color subtitleColor;
-  final bool isMoney;
+class AdminDashboardData {
+  final String adminName;
+  final int totalPenyewa;
+  final int totalAdmin;
+  final int totalKost;
+  final int totalKamarTersedia;
+  final int totalPesanan;
+  final int totalPendapatan;
+  final List<KostModel> kosts;
+  final List<BookingModel> bookings;
 
-  const SummaryCard({
-    super.key,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBackground,
-    required this.value,
-    required this.title,
-    required this.subtitle,
-    required this.subtitleColor,
-    this.isMoney = false,
+  const AdminDashboardData({
+    required this.adminName,
+    required this.totalPenyewa,
+    required this.totalAdmin,
+    required this.totalKost,
+    required this.totalKamarTersedia,
+    required this.totalPesanan,
+    required this.totalPendapatan,
+    required this.kosts,
+    required this.bookings,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 128,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 13,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE1E1E1),
-          width: 1.2,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: iconBackground,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: iconColor,
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: const Color(0xFF080B17),
-                    fontSize: isMoney ? 18 : 22,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: isMoney ? -0.6 : -0.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  maxLines: 2,
-                  softWrap: true,
-                  overflow: TextOverflow.visible,
-                  style: const TextStyle(
-                    color: Color(0xFF4A4A4A),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    height: 1.15,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.visible,
-                  style: TextStyle(
-                    color: subtitleColor,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    height: 1.15,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+  factory AdminDashboardData.empty() {
+    return const AdminDashboardData(
+      adminName: 'Admin',
+      totalPenyewa: 0,
+      totalAdmin: 0,
+      totalKost: 0,
+      totalKamarTersedia: 0,
+      totalPesanan: 0,
+      totalPendapatan: 0,
+      kosts: [],
+      bookings: [],
     );
   }
 }
 
-class BookingItem extends StatelessWidget {
+class AdminProfile {
   final String name;
-  final String kostName;
-  final String date;
-  final String status;
-  final Color statusTextColor;
-  final Color statusBackgroundColor;
-  final Color iconColor;
-  final Color iconBackground;
+  final String email;
 
-  const BookingItem({
-    super.key,
+  const AdminProfile({
     required this.name,
-    required this.kostName,
-    required this.date,
-    required this.status,
-    required this.statusTextColor,
-    required this.statusBackgroundColor,
-    required this.iconColor,
-    required this.iconBackground,
+    required this.email,
+  });
+}
+
+class UserModel {
+  final String id;
+  final String role;
+  final String email;
+  final String phone;
+  final String fullName;
+
+  const UserModel({
+    required this.id,
+    required this.role,
+    required this.email,
+    required this.phone,
+    required this.fullName,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 104,
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE1E1E1),
-          width: 1.2,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: iconBackground,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.person_outline_rounded,
-              color: iconColor,
-              size: 31,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16.5,
-                    color: Color(0xFF080B17),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  kostName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15.5,
-                    color: Color(0xFF4A4A4A),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  date,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    color: Color(0xFF4A4A4A),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            constraints: const BoxConstraints(
-              minWidth: 74,
-              maxWidth: 104,
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 8,
-            ),
-            decoration: BoxDecoration(
-              color: statusBackgroundColor,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              status,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: statusTextColor,
-                fontSize: 12.5,
-                height: 1.15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: Color(0xFFA7A7A7),
-            size: 32,
-          ),
-        ],
-      ),
+  factory UserModel.fromMap(Map<String, dynamic> map) {
+    return UserModel(
+      id: map['id']?.toString() ?? '',
+      role: map['role']?.toString() ?? '',
+      email: map['email']?.toString() ?? '',
+      phone: map['phone']?.toString() ?? '',
+      fullName: map['full_name']?.toString() ?? '',
     );
   }
 }
 
-class EmptyBookingCard extends StatelessWidget {
-  const EmptyBookingCard({super.key});
+class KostModel {
+  final String id;
+  final String name;
+  final String location;
+  final int price;
+  final double rating;
+  final int available;
+  final String description;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE1E1E1),
-          width: 1.2,
-        ),
-      ),
-      child: const Column(
-        children: [
-          Icon(
-            Icons.assignment_outlined,
-            size: 42,
-            color: ThemeApp.textGrey,
-          ),
-          SizedBox(height: 10),
-          Text(
-            'Belum ada pemesanan',
-            style: TextStyle(
-              color: ThemeApp.textDark,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Data pemesanan terbaru akan muncul di sini.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: ThemeApp.textGrey,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
+  const KostModel({
+    required this.id,
+    required this.name,
+    required this.location,
+    required this.price,
+    required this.rating,
+    required this.available,
+    required this.description,
+  });
+
+  factory KostModel.fromMap(Map<String, dynamic> map) {
+    return KostModel(
+      id: map['id']?.toString() ?? '',
+      name: map['nama_kost']?.toString() ?? 'Nama kost belum tersedia',
+      location: map['lokasi']?.toString() ?? 'Lokasi belum tersedia',
+      price: int.tryParse(map['harga']?.toString() ?? '0') ?? 0,
+      rating: double.tryParse(map['rating']?.toString() ?? '0') ?? 0,
+      available: int.tryParse(map['tersedia']?.toString() ?? '0') ?? 0,
+      description: map['deskripsi']?.toString() ?? '',
     );
   }
 }
 
-class AdminBottomNavigation extends StatelessWidget {
-  const AdminBottomNavigation({super.key});
+class BookingModel {
+  final String id;
+  final String title;
+  final String status;
+  final DateTime createdAt;
+  final String createdAtText;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 86,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 34,
-        vertical: 14,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(30),
-        ),
-        border: Border.all(
-          color: const Color(0xFFE1E1E1),
-          width: 1.2,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
-          Icon(
-            Icons.home_rounded,
-            color: Color(0xFF0A3348),
-            size: 36,
-          ),
-          Icon(
-            Icons.apartment_rounded,
-            color: Color(0xFFD6D6D6),
-            size: 34,
-          ),
-          Icon(
-            Icons.assignment_rounded,
-            color: Color(0xFFD6D6D6),
-            size: 34,
-          ),
-          Icon(
-            Icons.person_rounded,
-            color: Color(0xFFD6D6D6),
-            size: 36,
-          ),
-        ],
-      ),
+  const BookingModel({
+    required this.id,
+    required this.title,
+    required this.status,
+    required this.createdAt,
+    required this.createdAtText,
+  });
+
+  factory BookingModel.fromMap(Map<String, dynamic> map) {
+    final createdAtValue = map['created_at'];
+    final parsedDate = DateTime.tryParse(createdAtValue?.toString() ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0);
+
+    final rawStatus = map['status']?.toString();
+
+    return BookingModel(
+      id: map['id']?.toString() ?? '',
+      title: map['nama_kost']?.toString() ??
+          map['kost_name']?.toString() ??
+          map['id']?.toString() ??
+          'Pesanan Kost',
+      status: rawStatus == null || rawStatus.trim().isEmpty
+          ? 'Baru'
+          : rawStatus,
+      createdAt: parsedDate,
+      createdAtText: _DashboardScreenState.formatDate(createdAtValue),
     );
   }
+}
+
+class PaymentModel {
+  final String id;
+  final int amount;
+
+  const PaymentModel({
+    required this.id,
+    required this.amount,
+  });
+
+  factory PaymentModel.fromMap(Map<String, dynamic> map) {
+    final rawAmount = map['amount'] ??
+        map['total'] ??
+        map['nominal'] ??
+        map['jumlah'] ??
+        map['harga'];
+
+    return PaymentModel(
+      id: map['id']?.toString() ?? '',
+      amount: int.tryParse(rawAmount?.toString() ?? '0') ?? 0,
+    );
+  }
+}
+
+class StatisticModel {
+  final String title;
+  final String value;
+  final IconData icon;
+
+  const StatisticModel({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
 }

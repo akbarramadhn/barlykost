@@ -1,4 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/theme/app_theme.dart';
+import '../../../models/kost.dart';
+import '../../../models/user.dart';
+import '../../../services/kost_service.dart';
+import '../kost/daftarkost.dart';
+import '../kost/kost_detail.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -8,220 +16,330 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final SupabaseClient supabase = Supabase.instance.client;
+  final KostService kostService = KostService();
+
+  late Future<UserModel> userFuture;
+  late Future<List<KostModel>> kostFuture;
+
   int selectedNavIndex = 0;
 
-  static const Color darkTeal = Color(0xFF07364A);
-  static const Color tealStart = Color(0xFF0E7E72);
-  static const Color tealEnd = Color(0xFF61E6D4);
+  static const Color darkTeal = ThemeApp.buttonColor;
+  static const Color locationBlue = Color(0xFF6AB8FF);
+  static const Color starColor = Color(0xFFFFB000);
   static const Color softBlue = Color(0xFFD8ECFF);
 
-  final TextEditingController searchController = TextEditingController();
-
-  final List<CategoryModel> categories = [
-    CategoryModel(title: 'Termurah', icon: Icons.savings_outlined),
-    CategoryModel(title: 'Tahunan', icon: Icons.receipt_long_outlined),
-    CategoryModel(title: 'Bulanan', icon: Icons.calendar_month_rounded),
-    CategoryModel(title: 'Terbersih', icon: Icons.clean_hands_outlined),
-  ];
-
-  final List<KostModel> recommendations = [
-    KostModel(
-      name: 'Kost Hijau Bu Rini',
-      location: 'Lenteng Agung',
-      rating: '4,5/5',
-      price: 'Rp 1.000.000',
-      imageUrl:
-          'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
-    ),
-    KostModel(
-      name: 'Kost Ceria Pagi',
-      location: 'Jagakarsa',
-      rating: '4,9/5',
-      price: 'Rp 1.000.000',
-      imageUrl:
-          'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-    ),
-  ];
-
   @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    userFuture = fetchCurrentUser();
+    kostFuture = fetchKosts();
+  }
+
+  Future<UserModel> fetchCurrentUser() async {
+    try {
+      final authUser = supabase.auth.currentUser;
+
+      if (authUser == null) {
+        return UserModel.empty();
+      }
+
+      final email = authUser.email ?? '';
+
+      if (email.isEmpty) {
+        return UserModel.empty();
+      }
+
+      final response = await supabase
+          .from('users')
+          .select('id, role, email, phone, full_name')
+          .eq('email', email)
+          .maybeSingle();
+
+      if (response == null) {
+        return UserModel.empty();
+      }
+
+      return UserModel.fromMap(
+        Map<String, dynamic>.from(response),
+      );
+    } catch (error) {
+      debugPrint('Fetch current user error: $error');
+      return UserModel.empty();
+    }
+  }
+
+  Future<List<KostModel>> fetchKosts() async {
+    try {
+      return await kostService.fetchKostsWithImages();
+    } catch (error) {
+      debugPrint('Fetch home kost error: $error');
+      return [];
+    }
+  }
+
+  Future<void> refreshData() async {
+    setState(() {
+      userFuture = fetchCurrentUser();
+      kostFuture = fetchKosts();
+    });
+
+    await Future.wait([
+      userFuture,
+      kostFuture,
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: tealStart,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomLeft,
-            end: Alignment.topRight,
-            colors: [tealStart, tealEnd],
-          ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 24, bottom: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                buildHeader(),
-                const SizedBox(height: 28),
-                buildSearchBar(),
-                const SizedBox(height: 28),
-                buildCategoryMenu(),
-                const SizedBox(height: 30),
-                buildSectionTitle('Riwayat Pemesanan'),
-                const SizedBox(height: 14),
-                buildHistoryCard(),
-                const SizedBox(height: 32),
-                buildSectionTitle('Rekomendasi Terbaik'),
-                const SizedBox(height: 16),
-                buildRecommendationList(),
-              ],
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: const TextScaler.linear(1.0),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: ThemeApp.backgroundGradient,
+          child: SafeArea(
+            bottom: false,
+            child: RefreshIndicator(
+              color: darkTeal,
+              onRefresh: refreshData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(22, 24, 22, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    buildHeader(),
+                    const SizedBox(height: 30),
+                    buildSearchBar(),
+                    const SizedBox(height: 26),
+                    buildCategoryRow(),
+                    const SizedBox(height: 30),
+                    buildBookingHistorySection(),
+                    const SizedBox(height: 30),
+                    buildRecommendationSection(),
+                    const SizedBox(height: 18),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
+        bottomNavigationBar: buildBottomNavigationBar(),
       ),
-      bottomNavigationBar: buildBottomNavigationBar(),
     );
   }
 
   Widget buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: const Color(0xFFD1E9B7),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-            ),
-            child: const Icon(Icons.person, color: darkTeal, size: 40),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final bool isSmallTextArea = constraints.maxWidth < 180;
+    return FutureBuilder<UserModel>(
+      future: userFuture,
+      builder: (context, snapshot) {
+        final user = snapshot.data ?? UserModel.empty();
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hi, Akbar Ramadhan',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: isSmallTextArea ? 17 : 19,
-                        fontWeight: FontWeight.w800,
-                        height: 1.15,
-                      ),
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            buildAvatar(),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hi, ${user.fullName}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 21,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
                     ),
-                    const SizedBox(height: 7),
-                    Text(
-                      'Mau Cari Kost-kostan?',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isSmallTextArea ? 16 : 18,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                      ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Mau Cari Kost-kostan?',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
                     ),
-                  ],
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(Icons.favorite_border_rounded, color: darkTeal, size: 29),
-          const SizedBox(width: 10),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              const Icon(
-                Icons.notifications_none_rounded,
-                color: darkTeal,
-                size: 32,
+                  ),
+                ],
               ),
-              Positioned(
-                right: 1,
-                top: -1,
-                child: Container(
-                  width: 9,
-                  height: 9,
-                  decoration: const BoxDecoration(
-                    color: darkTeal,
-                    shape: BoxShape.circle,
+            ),
+            const SizedBox(width: 10),
+            const Icon(
+              Icons.favorite_border_rounded,
+              color: darkTeal,
+              size: 39,
+            ),
+            const SizedBox(width: 10),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(
+                  Icons.notifications_none_rounded,
+                  color: darkTeal,
+                  size: 41,
+                ),
+                Positioned(
+                  right: 1,
+                  top: 2,
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: const BoxDecoration(
+                      color: darkTeal,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget buildAvatar() {
+    return Container(
+      width: 74,
+      height: 74,
+      decoration: BoxDecoration(
+        color: const Color(0xFFC8DFA4),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white,
+          width: 2,
+        ),
+      ),
+      child: const Icon(
+        Icons.person_rounded,
+        color: darkTeal,
+        size: 50,
       ),
     );
   }
 
   Widget buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+    return GestureDetector(
+      onTap: openCariKost,
       child: Container(
-        height: 58,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(34),
-          border: Border.all(color: const Color(0xFFDADADA), width: 1.3),
+          borderRadius: BorderRadius.circular(36),
+          border: Border.all(
+            color: const Color(0xFFE0E0E0),
+            width: 1.5,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x12000000),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
-            Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 32),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Theme(
-                data: Theme.of(context).copyWith(
-                  inputDecorationTheme: const InputDecorationTheme(
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    errorBorder: InputBorder.none,
-                    focusedErrorBorder: InputBorder.none,
-                  ),
-                ),
-                child: TextField(
-                  controller: searchController,
-                  cursorColor: darkTeal,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Cari kost anda',
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
+            Icon(
+              Icons.search_rounded,
+              color: Colors.grey.shade400,
+              size: 33,
+            ),
+            const SizedBox(width: 15),
+            Text(
+              'Cari kost anda',
+              style: TextStyle(
+                color: Colors.grey.shade400,
+                fontSize: 19,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildCategoryRow() {
+    return SizedBox(
+      height: 114,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          buildCategoryItem(
+            icon: Icons.savings_outlined,
+            title: 'Termurah',
+          ),
+          buildCategoryItem(
+            icon: Icons.receipt_long_rounded,
+            title: 'Tahunan',
+          ),
+          buildCategoryItem(
+            icon: Icons.calendar_month_rounded,
+            title: 'Bulanan',
+          ),
+          buildCategoryItem(
+            icon: Icons.volunteer_activism_rounded,
+            title: 'Terbersih',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildCategoryItem({
+    required IconData icon,
+    required String title,
+  }) {
+    return GestureDetector(
+      onTap: openCariKost,
+      child: SizedBox(
+        width: 76,
+        height: 114,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                color: softBlue,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Icon(
+                icon,
+                color: darkTeal,
+                size: 35,
+              ),
+            ),
+            const SizedBox(height: 9),
+            SizedBox(
+              height: 22,
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
                     ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    errorBorder: InputBorder.none,
-                    focusedErrorBorder: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
                   ),
                 ),
               ),
@@ -232,121 +350,93 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildCategoryMenu() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          const double gap = 13;
-          final double availableWidth = constraints.maxWidth - (gap * 3);
-          final double itemWidth = availableWidth / 4;
-          final double boxSize = itemWidth.clamp(60.0, 74.0);
+  Widget buildBookingHistorySection() {
+    return FutureBuilder<List<KostModel>>(
+      future: kostFuture,
+      builder: (context, snapshot) {
+        final kosts = snapshot.data ?? [];
+        final kost = kosts.isNotEmpty ? kosts.first : KostModel.empty();
 
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: categories.map((item) {
-              return SizedBox(
-                width: itemWidth,
-                child: Column(
-                  children: [
-                    Container(
-                      width: boxSize,
-                      height: boxSize,
-                      decoration: BoxDecoration(
-                        color: softBlue,
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: Icon(
-                        item.icon,
-                        color: darkTeal,
-                        size: boxSize * 0.46,
-                      ),
-                    ),
-                    const SizedBox(height: 11),
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 14.2,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          );
-        },
-      ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Riwayat Pemesanan',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 15),
+            if (snapshot.connectionState == ConnectionState.waiting)
+              buildHistoryLoadingCard()
+            else if (kosts.isEmpty)
+              buildEmptyHistoryCard()
+            else
+              buildBookingHistoryCard(kost),
+          ],
+        );
+      },
     );
   }
 
-  Widget buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 22,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-
-  Widget buildHistoryCard() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+  Widget buildBookingHistoryCard(KostModel kost) {
+    return GestureDetector(
+      onTap: () {
+        openDetailKost(kost.id);
+      },
       child: Container(
-        height: 130,
-        padding: const EdgeInsets.all(12),
+        width: double.infinity,
+        height: 140,
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withOpacity(0.85), width: 1.4),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.9),
+            width: 1.2,
+          ),
         ),
         child: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.network(
-                'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
-                width: 108,
-                height: 108,
-                fit: BoxFit.cover,
+              borderRadius: BorderRadius.circular(13),
+              child: buildKostImage(
+                imageUrl: kost.imageUrl,
+                width: 115,
+                height: 120,
               ),
             ),
             const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Kost Putra Agan',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      kost.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
                     ),
-                  ),
-                  Spacer(),
-                  HistoryInfoRow(
-                    icon: Icons.calendar_month_rounded,
-                    text: '1 Januari 2023 - 1 Januari 2026',
-                  ),
-                  SizedBox(height: 12),
-                  HistoryInfoRow(
-                    icon: Icons.location_on_outlined,
-                    text: 'Jagakarsa, Jakarta Selatan',
-                  ),
-                  Spacer(),
-                ],
+                    buildHistoryInfoRow(
+                      icon: Icons.calendar_month_rounded,
+                      text: '1 Januari 2023 - 1 Januari 2026',
+                    ),
+                    buildHistoryInfoRow(
+                      icon: Icons.location_on_outlined,
+                      text: '${kost.location}, Jakarta Selatan',
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -355,141 +445,379 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildRecommendationList() {
-    return SizedBox(
-      height: 350,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: recommendations.length,
-        separatorBuilder: (context, index) {
-          return const SizedBox(width: 16);
-        },
-        itemBuilder: (context, index) {
-          return buildRecommendationCard(recommendations[index]);
-        },
+  Widget buildHistoryInfoRow({
+    required IconData icon,
+    required String text,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: const Color(0xFF0D74FF),
+          size: 25,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget buildHistoryLoadingCard() {
+    return Container(
+      width: double.infinity,
+      height: 140,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.9),
+          width: 1.2,
+        ),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(
+          color: darkTeal,
+          strokeWidth: 2,
+        ),
       ),
     );
   }
 
-  Widget buildRecommendationCard(KostModel item) {
+  Widget buildEmptyHistoryCard() {
     return Container(
-      width: 260,
+      width: double.infinity,
+      height: 140,
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.25),
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x18000000),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
+        border: Border.all(
+          color: Colors.white.withOpacity(0.9),
+          width: 1.2,
+        ),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Column(
+      child: const Center(
+        child: Text(
+          'Belum ada riwayat pemesanan',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildRecommendationSection() {
+    return FutureBuilder<List<KostModel>>(
+      future: kostFuture,
+      builder: (context, snapshot) {
+        final kosts = snapshot.data ?? [];
+
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.network(
-              item.imageUrl,
-              width: double.infinity,
-              height: 165,
-              fit: BoxFit.cover,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+            const Padding(
+              padding: EdgeInsets.only(left: 6),
               child: Text(
-                item.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                'Rekomendasi Terbaik',
+                style: TextStyle(
                   color: Colors.black,
-                  fontSize: 20,
+                  fontSize: 21,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.location_on_outlined,
-                    color: Color(0xFF6AB8FF),
-                    size: 26,
+            const SizedBox(height: 16),
+            if (snapshot.connectionState == ConnectionState.waiting)
+              buildRecommendationLoading()
+            else if (kosts.isEmpty)
+              buildEmptyRecommendationCard()
+            else
+              SizedBox(
+                height: 340,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: kosts.length,
+                  separatorBuilder: (context, index) {
+                    return const SizedBox(width: 16);
+                  },
+                  itemBuilder: (context, index) {
+                    return buildRecommendationCard(kosts[index]);
+                  },
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget buildRecommendationCard(KostModel kost) {
+    return GestureDetector(
+      onTap: () {
+        openDetailKost(kost.id);
+      },
+      child: Container(
+        width: 238,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x17000000),
+              blurRadius: 14,
+              offset: Offset(0, 7),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              buildKostImage(
+                imageUrl: kost.imageUrl,
+                width: double.infinity,
+                height: 150,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(15, 14, 15, 0),
+                child: Text(
+                  kost.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      item.location,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      color: locationBlue,
+                      size: 27,
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        kost.location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF303030),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          height: 1.1,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.favorite_border_rounded,
+                      color: Color(0xFF707070),
+                      size: 39,
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(13, 8, 15, 0),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      color: starColor,
+                      size: 31,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      formatRating(kost.rating),
                       style: const TextStyle(
                         color: Color(0xFF303030),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const Icon(
-                    Icons.favorite_border_rounded,
-                    color: Color(0xFF666666),
-                    size: 34,
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(13, 8, 14, 0),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.star_rounded,
-                    color: Color(0xFFFFB000),
-                    size: 32,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    item.rating,
-                    style: const TextStyle(
-                      color: Color(0xFF303030),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
-              child: Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: item.price,
-                      style: const TextStyle(
-                        color: Color(0xFF2D3438),
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const TextSpan(
-                      text: ' /Perbulan',
-                      style: TextStyle(
-                        color: Color(0xFFB0B0B0),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                        height: 1.1,
                       ),
                     ),
                   ],
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(15, 0, 13, 15),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: formatRupiah(kost.price),
+                          style: const TextStyle(
+                            color: Color(0xFF2D3438),
+                            fontSize: 21,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const TextSpan(
+                          text: ' /Perbulan',
+                          style: TextStyle(
+                            color: Color(0xFFB0B0B0),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    maxLines: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildRecommendationLoading() {
+    return Container(
+      width: 238,
+      height: 340,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(
+          color: darkTeal,
+          strokeWidth: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget buildEmptyRecommendationCard() {
+    return Container(
+      width: double.infinity,
+      height: 120,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Center(
+        child: Text(
+          'Data kost belum tersedia',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildKostImage({
+    required String imageUrl,
+    required double width,
+    required double height,
+  }) {
+    if (imageUrl.trim().isEmpty) {
+      return buildImagePlaceholder(
+        width: width,
+        height: height,
+      );
+    }
+
+    return Image.network(
+      imageUrl,
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return buildImagePlaceholder(
+          width: width,
+          height: height,
+        );
+      },
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) {
+          return child;
+        }
+
+        return Container(
+          width: width,
+          height: height,
+          color: const Color(0xFFEAF6F4),
+          child: const Center(
+            child: CircularProgressIndicator(
+              color: darkTeal,
+              strokeWidth: 2,
             ),
-          ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget buildImagePlaceholder({
+    required double width,
+    required double height,
+  }) {
+    return Container(
+      width: width,
+      height: height,
+      color: const Color(0xFFEAF6F4),
+      child: const Center(
+        child: Icon(
+          Icons.home_work_outlined,
+          color: darkTeal,
+          size: 42,
+        ),
+      ),
+    );
+  }
+
+  void openCariKost() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const CariKostScreen(),
+      ),
+    );
+  }
+
+  void openDetailKost(String kostId) {
+    if (kostId.trim().isEmpty) {
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DetailKostScreen(
+          kostId: kostId,
         ),
       ),
     );
@@ -498,90 +826,106 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget buildBottomNavigationBar() {
     return Container(
       height: 82,
-      decoration: const BoxDecoration(color: Colors.white),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+      ),
       child: SafeArea(
         top: false,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            buildNavItem(index: 0, icon: Icons.home_rounded),
-            buildNavItem(index: 1, icon: Icons.chat_bubble_rounded),
-            buildNavItem(index: 2, icon: Icons.history_rounded),
-            buildNavItem(index: 3, icon: Icons.person_rounded),
+            buildNavItem(
+              index: 0,
+              icon: Icons.home_rounded,
+            ),
+            buildNavItem(
+              index: 1,
+              icon: Icons.search_rounded,
+            ),
+            buildNavItem(
+              index: 2,
+              icon: Icons.history_rounded,
+            ),
+            buildNavItem(
+              index: 3,
+              icon: Icons.person_rounded,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget buildNavItem({required int index, required IconData icon}) {
+  Widget buildNavItem({
+    required int index,
+    required IconData icon,
+  }) {
     final bool isActive = selectedNavIndex == index;
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
-        setState(() {
-          selectedNavIndex = index;
-        });
+        if (index == selectedNavIndex) {
+          return;
+        }
+
+        if (index == 1) {
+          openCariKost();
+          return;
+        }
+
+        if (index == 2) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Halaman riwayat belum dibuat'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+          return;
+        }
+
+        if (index == 3) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Halaman profil belum dibuat'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+          return;
+        }
       },
-      child: Icon(
-        icon,
-        size: 36,
-        color: isActive ? darkTeal : Colors.grey.shade300,
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: Center(
+          child: Icon(
+            icon,
+            size: 38,
+            color: isActive ? darkTeal : Colors.grey.shade300,
+          ),
+        ),
       ),
     );
   }
-}
 
-class HistoryInfoRow extends StatelessWidget {
-  final IconData icon;
-  final String text;
+  static String formatRupiah(int value) {
+    final text = value.toString();
+    final reversed = text.split('').reversed.toList();
+    final buffer = StringBuffer();
 
-  const HistoryInfoRow({super.key, required this.icon, required this.text});
+    for (int i = 0; i < reversed.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        buffer.write('.');
+      }
 
-  static const Color blueIcon = Color(0xFF168BFF);
+      buffer.write(reversed[i]);
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: blueIcon, size: 23),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 14.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
+    final result = buffer.toString().split('').reversed.join();
+    return 'Rp $result';
   }
-}
 
-class CategoryModel {
-  final String title;
-  final IconData icon;
-
-  const CategoryModel({required this.title, required this.icon});
-}
-
-class KostModel {
-  final String name;
-  final String location;
-  final String rating;
-  final String price;
-  final String imageUrl;
-
-  const KostModel({
-    required this.name,
-    required this.location,
-    required this.rating,
-    required this.price,
-    required this.imageUrl,
-  });
+  static String formatRating(double value) {
+    return '${value.toStringAsFixed(1).replaceAll('.', ',')}/5';
+  }
 }
