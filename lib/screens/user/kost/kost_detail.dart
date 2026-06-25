@@ -4,6 +4,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../models/facility.dart';
 import '../../../models/kost.dart';
 import '../../../services/kost_service.dart';
+import '../../../widgets/bottomnav.dart';
+import '../../../widgets/emptystate.dart';
 import 'daftarkost.dart';
 
 class DetailKostScreen extends StatefulWidget {
@@ -42,7 +44,8 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
     try {
       final kost = await kostService.fetchKostById(widget.kostId);
       final images = await kostService.fetchKostImages(widget.kostId);
-      final facilities = await kostService.fetchFacilitiesByKostId(widget.kostId);
+      final facilities =
+          await kostService.fetchFacilitiesByKostId(widget.kostId);
 
       return _KostDetailData(
         kost: kost,
@@ -88,6 +91,28 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
 
               final data = snapshot.data ?? _KostDetailData.empty();
 
+              if (data.kost.id.trim().isEmpty) {
+                return RefreshIndicator(
+                  color: darkTeal,
+                  onRefresh: refreshData,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(24, 120, 24, 24),
+                    children: const [
+                      SizedBox(
+                        height: 360,
+                        child: EmptyState(
+                          icon: Icons.home_work_outlined,
+                          title: 'Detail kost tidak ditemukan',
+                          message:
+                              'Data kost belum tersedia atau gagal dimuat. Coba refresh halaman ini.',
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
               return RefreshIndicator(
                 color: darkTeal,
                 onRefresh: refreshData,
@@ -105,7 +130,10 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
             },
           ),
         ),
-        bottomNavigationBar: buildBottomNavigationBar(),
+        bottomNavigationBar: CustomBottomNav(
+          currentIndex: selectedNavIndex,
+          onTap: handleBottomNavTap,
+        ),
       ),
     );
   }
@@ -170,14 +198,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
             right: 24,
             child: buildCircleButton(
               icon: Icons.share_rounded,
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Fitur share belum dibuat'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              },
+              onTap: showShareInfo,
             ),
           ),
           if (images.length > 1)
@@ -217,9 +238,16 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
       child: Container(
         width: 54,
         height: 54,
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.94),
           shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.10),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         child: Icon(
           icon,
@@ -244,6 +272,10 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
           decoration: BoxDecoration(
             color: isActive ? darkTeal : Colors.white,
             shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white,
+              width: 1,
+            ),
           ),
         );
       }),
@@ -274,31 +306,21 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
         children: [
           buildTitleAndPrice(kost),
           const SizedBox(height: 34),
-          buildSectionHeader(
-            title: 'Fasilitas',
-            actionText: 'Lihat semua',
-          ),
+          buildSectionHeader(title: 'Fasilitas'),
           const SizedBox(height: 16),
           buildFacilities(data.facilities),
           const SizedBox(height: 32),
-          buildSectionHeader(
-            title: 'Kebijakan Properti',
-          ),
+          buildSectionHeader(title: 'Kebijakan Properti'),
           const SizedBox(height: 14),
           buildPolicyText(),
           const SizedBox(height: 30),
-          buildSectionHeader(
-            title: 'Deskripsi Properti',
-          ),
+          buildSectionHeader(title: 'Deskripsi Properti'),
           const SizedBox(height: 14),
           buildDescriptionText(kost),
           const SizedBox(height: 30),
           buildDetailLocation(kost),
           const SizedBox(height: 30),
-          buildSectionHeader(
-            title: 'Informasi Jarak',
-            actionText: 'Lihat semua',
-          ),
+          buildSectionHeader(title: 'Informasi Jarak'),
           const SizedBox(height: 16),
           buildDistanceInformation(),
           const SizedBox(height: 36),
@@ -352,33 +374,44 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
           ),
         ),
         const SizedBox(width: 14),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            const SizedBox(height: 56),
-            Text(
-              formatRupiah(kost.price),
-              style: const TextStyle(
-                color: Color(0xFF263238),
-                fontSize: 21,
-                fontWeight: FontWeight.w900,
+        SizedBox(
+          width: 112,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const SizedBox(height: 56),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  formatRupiah(kost.price),
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Color(0xFF263238),
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
-            ),
-            const Text(
-              '/Perbulan',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
+              const Text(
+                '/Perbulan',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            const Icon(
-              Icons.favorite_border_rounded,
-              color: Color(0xFF777777),
-              size: 36,
-            ),
-          ],
+              const SizedBox(height: 18),
+              GestureDetector(
+                onTap: showWishlistInfo,
+                child: const Icon(
+                  Icons.favorite_border_rounded,
+                  color: Color(0xFF777777),
+                  size: 36,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -417,51 +450,44 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
 
   Widget buildSectionHeader({
     required String title,
-    String? actionText,
   }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 21,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        if (actionText != null)
-          GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Fitur lihat semua belum dibuat'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-            child: Text(
-              actionText,
-              style: const TextStyle(
-                color: locationBlue,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-      ],
+    return Text(
+      title,
+      style: const TextStyle(
+        color: Colors.black,
+        fontSize: 21,
+        fontWeight: FontWeight.w800,
+      ),
     );
   }
 
   Widget buildFacilities(List<FacilityModel> facilities) {
     final shownFacilities = facilities.take(4).toList();
 
+    if (shownFacilities.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Text(
+          'Fasilitas belum tersedia',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        const double gap = 12;
+        const double gap = 10;
         final double itemWidth = (constraints.maxWidth - (gap * 3)) / 4;
-        final double boxSize = itemWidth.clamp(66.0, 78.0).toDouble();
+        final double boxSize = itemWidth.clamp(62.0, 76.0).toDouble();
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -482,12 +508,12 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
                     child: Icon(
                       facility.icon,
                       color: darkTeal,
-                      size: boxSize * 0.43,
+                      size: boxSize * 0.42,
                     ),
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
-                    height: 34,
+                    height: 36,
                     child: Center(
                       child: Text(
                         facility.name,
@@ -496,9 +522,9 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.black,
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w700,
-                          height: 1.05,
+                          height: 1.08,
                         ),
                       ),
                     ),
@@ -514,15 +540,15 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
 
   Widget buildPolicyText() {
     return const Text(
-      '1. Seluruh fasilitas kost hanya diperuntukkan bagi penyewa kost/penyewa kamar, bukan untuk umum\n'
-      '2. Penyewa kost dilarang menerima tamu dan/atau membawa teman ke kamar kost. Sebaiknya menerima tamu atau teman adalah di tempat terbuka atau tempat umum lainnya.\n'
+      '1. Seluruh fasilitas kost hanya diperuntukkan bagi penyewa kost/penyewa kamar, bukan untuk umum.\n'
+      '2. Penyewa kost dilarang menerima tamu atau membawa teman ke kamar kost. Tamu sebaiknya diterima di area terbuka atau tempat umum.\n'
       '3. Penyewa kost tidak diperkenankan merokok di dalam kamar maupun di lingkungan rumah kost.',
       textAlign: TextAlign.justify,
       style: TextStyle(
         color: Colors.black,
         fontSize: 15.5,
         fontWeight: FontWeight.w500,
-        height: 1.28,
+        height: 1.32,
       ),
     );
   }
@@ -539,7 +565,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
         color: Colors.black,
         fontSize: 15.5,
         fontWeight: FontWeight.w500,
-        height: 1.28,
+        height: 1.32,
       ),
     );
   }
@@ -548,14 +574,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Detail Lokasi',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 21,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
+        buildSectionHeader(title: 'Detail Lokasi'),
         const SizedBox(height: 14),
         Text(
           'Area ${kost.location}, Jakarta Selatan',
@@ -564,7 +583,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
             color: Colors.black,
             fontSize: 15.5,
             fontWeight: FontWeight.w500,
-            height: 1.28,
+            height: 1.32,
           ),
         ),
         const SizedBox(height: 14),
@@ -572,7 +591,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
           width: double.infinity,
           height: 126,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.90),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Stack(
@@ -610,7 +629,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
         DistanceInfoRow(
           icon: Icons.flight_rounded,
           title: 'Bandara',
-          subtitle: 'Bandara Halim Perdana Kusuma: 10,3km',
+          subtitle: 'Bandara Halim Perdana Kusuma : 10,3km',
         ),
       ],
     );
@@ -624,7 +643,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Booking ${kost.name} belum dibuat'),
+              content: Text('Booking ${kost.name} belum disambungkan'),
               duration: const Duration(seconds: 1),
             ),
           );
@@ -648,96 +667,67 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
     );
   }
 
-  Widget buildBottomNavigationBar() {
-    return Container(
-      height: 82,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            buildNavItem(
-              index: 0,
-              icon: Icons.home_rounded,
-            ),
-            buildNavItem(
-              index: 1,
-              icon: Icons.search_rounded,
-            ),
-            buildNavItem(
-              index: 2,
-              icon: Icons.history_rounded,
-            ),
-            buildNavItem(
-              index: 3,
-              icon: Icons.person_rounded,
-            ),
-          ],
+  void handleBottomNavTap(int index) {
+    if (index == selectedNavIndex) {
+      Navigator.popUntil(
+        context,
+        (route) => route.isFirst,
+      );
+      return;
+    }
+
+    if (index == 0) {
+      Navigator.popUntil(
+        context,
+        (route) => route.isFirst,
+      );
+      return;
+    }
+
+    if (index == 1) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const CariKostScreen(),
         ),
+      );
+      return;
+    }
+
+    if (index == 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Halaman riwayat akan disambungkan setelah dirapikan'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
+    if (index == 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Halaman profil akan disambungkan setelah dirapikan'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  void showShareInfo() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Fitur share belum disambungkan'),
+        duration: Duration(seconds: 1),
       ),
     );
   }
 
-  Widget buildNavItem({
-    required int index,
-    required IconData icon,
-  }) {
-    final bool isActive = selectedNavIndex == index;
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        if (index == 0) {
-          Navigator.popUntil(
-            context,
-            (route) => route.isFirst,
-          );
-          return;
-        }
-
-        if (index == 1) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const CariKostScreen(),
-            ),
-          );
-          return;
-        }
-
-        if (index == 2) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Halaman riwayat belum dibuat'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-          return;
-        }
-
-        if (index == 3) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Halaman profil belum dibuat'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-          return;
-        }
-      },
-      child: SizedBox(
-        width: 64,
-        height: 64,
-        child: Center(
-          child: Icon(
-            icon,
-            size: 36,
-            color: isActive ? darkTeal : Colors.grey.shade300,
-          ),
-        ),
+  void showWishlistInfo() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Wishlist akan disambungkan setelah page selesai'),
+        duration: Duration(seconds: 1),
       ),
     );
   }

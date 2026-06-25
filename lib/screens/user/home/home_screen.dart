@@ -5,8 +5,15 @@ import '../../../core/theme/app_theme.dart';
 import '../../../models/kost.dart';
 import '../../../models/user.dart';
 import '../../../services/kost_service.dart';
+import '../../../widgets/bottomnav.dart';
+import '../../../widgets/emptystate.dart';
+import '../../../widgets/kostcard.dart';
+import '../../../widgets/searchbar.dart';
+import '../history/history_screen.dart';
 import '../kost/daftarkost.dart';
 import '../kost/kost_detail.dart';
+import '../profile/profile_screen.dart';
+import '../wishlist/wishlist_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const Color darkTeal = ThemeApp.buttonColor;
   static const Color locationBlue = Color(0xFF6AB8FF);
-  static const Color starColor = Color(0xFFFFB000);
   static const Color softBlue = Color(0xFFD8ECFF);
 
   @override
@@ -60,9 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return UserModel.empty();
       }
 
-      return UserModel.fromMap(
-        Map<String, dynamic>.from(response),
-      );
+      return UserModel.fromMap(Map<String, dynamic>.from(response));
     } catch (error) {
       debugPrint('Fetch current user error: $error');
       return UserModel.empty();
@@ -84,18 +88,15 @@ class _HomeScreenState extends State<HomeScreen> {
       kostFuture = fetchKosts();
     });
 
-    await Future.wait([
-      userFuture,
-      kostFuture,
-    ]);
+    await Future.wait([userFuture, kostFuture]);
   }
 
   @override
   Widget build(BuildContext context) {
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        textScaler: const TextScaler.linear(1.0),
-      ),
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: const TextScaler.linear(1.0)),
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Container(
@@ -114,22 +115,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     buildHeader(),
-                    const SizedBox(height: 30),
-                    buildSearchBar(),
                     const SizedBox(height: 26),
+                    buildSearchBar(),
+                    const SizedBox(height: 24),
                     buildCategoryRow(),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 28),
                     buildBookingHistorySection(),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 28),
                     buildRecommendationSection(),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
             ),
           ),
         ),
-        bottomNavigationBar: buildBottomNavigationBar(),
+        bottomNavigationBar: CustomBottomNav(
+          currentIndex: selectedNavIndex,
+          onTap: handleBottomNavTap,
+        ),
       ),
     );
   }
@@ -139,6 +143,9 @@ class _HomeScreenState extends State<HomeScreen> {
       future: userFuture,
       builder: (context, snapshot) {
         final user = snapshot.data ?? UserModel.empty();
+        final displayName = user.fullName.trim().isEmpty
+            ? 'Penyewa'
+            : user.fullName.trim();
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -150,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Hi, ${user.fullName}',
+                    'Hi, $displayName',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -162,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Mau Cari Kost-kostan?',
+                    'Mau cari kost-kostan?',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -176,10 +183,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            const Icon(
-              Icons.favorite_border_rounded,
-              color: darkTeal,
-              size: 39,
+            GestureDetector(
+              onTap: () {
+                openWishlist();
+              },
+              child: const Icon(
+                Icons.favorite_border_rounded,
+                color: darkTeal,
+                size: 38,
+              ),
             ),
             const SizedBox(width: 10),
             Stack(
@@ -188,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Icon(
                   Icons.notifications_none_rounded,
                   color: darkTeal,
-                  size: 41,
+                  size: 40,
                 ),
                 Positioned(
                   right: 1,
@@ -217,76 +229,30 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFC8DFA4),
         shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white,
-          width: 2,
-        ),
+        border: Border.all(color: Colors.white, width: 2),
       ),
-      child: const Icon(
-        Icons.person_rounded,
-        color: darkTeal,
-        size: 50,
-      ),
+      child: const Icon(Icons.person_rounded, color: darkTeal, size: 50),
     );
   }
 
   Widget buildSearchBar() {
-    return GestureDetector(
+    return SearchBarWidget(
+      hintText: 'Cari kost anda',
+      showFilter: false,
+      readOnly: true,
+      margin: EdgeInsets.zero,
       onTap: openCariKost,
-      child: Container(
-        height: 60,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(36),
-          border: Border.all(
-            color: const Color(0xFFE0E0E0),
-            width: 1.5,
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x12000000),
-              blurRadius: 8,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.search_rounded,
-              color: Colors.grey.shade400,
-              size: 33,
-            ),
-            const SizedBox(width: 15),
-            Text(
-              'Cari kost anda',
-              style: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 19,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
   Widget buildCategoryRow() {
     return SizedBox(
-      height: 114,
+      height: 112,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          buildCategoryItem(
-            icon: Icons.savings_outlined,
-            title: 'Termurah',
-          ),
-          buildCategoryItem(
-            icon: Icons.receipt_long_rounded,
-            title: 'Tahunan',
-          ),
+          buildCategoryItem(icon: Icons.savings_outlined, title: 'Termurah'),
+          buildCategoryItem(icon: Icons.receipt_long_rounded, title: 'Tahunan'),
           buildCategoryItem(
             icon: Icons.calendar_month_rounded,
             title: 'Bulanan',
@@ -300,15 +266,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildCategoryItem({
-    required IconData icon,
-    required String title,
-  }) {
+  Widget buildCategoryItem({required IconData icon, required String title}) {
     return GestureDetector(
       onTap: openCariKost,
       child: SizedBox(
         width: 76,
-        height: 114,
+        height: 112,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -319,11 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: softBlue,
                 borderRadius: BorderRadius.circular(22),
               ),
-              child: Icon(
-                icon,
-                color: darkTeal,
-                size: 35,
-              ),
+              child: Icon(icon, color: darkTeal, size: 35),
             ),
             const SizedBox(height: 9),
             SizedBox(
@@ -360,14 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Riwayat Pemesanan',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 21,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            buildSectionTitle('Riwayat Pemesanan'),
             const SizedBox(height: 15),
             if (snapshot.connectionState == ConnectionState.waiting)
               buildHistoryLoadingCard()
@@ -391,10 +343,10 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 140,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.transparent,
+          color: Colors.white.withValues(alpha: 0.20),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.90),
             width: 1.2,
           ),
         ),
@@ -433,7 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     buildHistoryInfoRow(
                       icon: Icons.location_on_outlined,
-                      text: '${kost.location}, Jakarta Selatan',
+                      text: kost.location,
                     ),
                   ],
                 ),
@@ -445,17 +397,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildHistoryInfoRow({
-    required IconData icon,
-    required String text,
-  }) {
+  Widget buildHistoryInfoRow({required IconData icon, required String text}) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: const Color(0xFF0D74FF),
-          size: 25,
-        ),
+        Icon(icon, color: locationBlue, size: 25),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
@@ -479,18 +424,15 @@ class _HomeScreenState extends State<HomeScreen> {
       width: double.infinity,
       height: 140,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.25),
+        color: Colors.white.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.90),
           width: 1.2,
         ),
       ),
       child: const Center(
-        child: CircularProgressIndicator(
-          color: darkTeal,
-          strokeWidth: 2,
-        ),
+        child: CircularProgressIndicator(color: darkTeal, strokeWidth: 2),
       ),
     );
   }
@@ -498,25 +440,20 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget buildEmptyHistoryCard() {
     return Container(
       width: double.infinity,
-      height: 140,
-      padding: const EdgeInsets.all(18),
+      height: 150,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.25),
+        color: Colors.white.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.90),
           width: 1.2,
         ),
       ),
-      child: const Center(
-        child: Text(
-          'Belum ada riwayat pemesanan',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 15.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+      child: const EmptyState(
+        icon: Icons.receipt_long_rounded,
+        title: 'Belum ada riwayat',
+        message: 'Riwayat pemesanan kost kamu akan muncul di sini.',
       ),
     );
   }
@@ -530,16 +467,9 @@ class _HomeScreenState extends State<HomeScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.only(left: 6),
-              child: Text(
-                'Rekomendasi Terbaik',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: buildSectionTitle('Rekomendasi Terbaik'),
             ),
             const SizedBox(height: 16),
             if (snapshot.connectionState == ConnectionState.waiting)
@@ -548,7 +478,7 @@ class _HomeScreenState extends State<HomeScreen> {
               buildEmptyRecommendationCard()
             else
               SizedBox(
-                height: 340,
+                height: 270,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: kosts.length,
@@ -556,7 +486,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     return const SizedBox(width: 16);
                   },
                   itemBuilder: (context, index) {
-                    return buildRecommendationCard(kosts[index]);
+                    final kost = kosts[index];
+
+                    return KostCard(
+                      width: 238,
+                      margin: EdgeInsets.zero,
+                      namaKost: kost.name,
+                      lokasi: kost.location,
+                      harga: kost.price,
+                      rating: kost.rating,
+                      imageUrl: kost.imageUrl,
+                      onTap: () {
+                        openDetailKost(kost.id);
+                      },
+                    );
                   },
                 ),
               ),
@@ -566,152 +509,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildRecommendationCard(KostModel kost) {
-    return GestureDetector(
-      onTap: () {
-        openDetailKost(kost.id);
-      },
-      child: Container(
-        width: 238,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x17000000),
-              blurRadius: 14,
-              offset: Offset(0, 7),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              buildKostImage(
-                imageUrl: kost.imageUrl,
-                width: double.infinity,
-                height: 150,
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(15, 14, 15, 0),
-                child: Text(
-                  kost.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    height: 1.1,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      color: locationBlue,
-                      size: 27,
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Text(
-                        kost.location,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF303030),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          height: 1.1,
-                        ),
-                      ),
-                    ),
-                    const Icon(
-                      Icons.favorite_border_rounded,
-                      color: Color(0xFF707070),
-                      size: 39,
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(13, 8, 15, 0),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.star_rounded,
-                      color: starColor,
-                      size: 31,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      formatRating(kost.rating),
-                      style: const TextStyle(
-                        color: Color(0xFF303030),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        height: 1.1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(15, 0, 13, 15),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: formatRupiah(kost.price),
-                          style: const TextStyle(
-                            color: Color(0xFF2D3438),
-                            fontSize: 21,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const TextSpan(
-                          text: ' /Perbulan',
-                          style: TextStyle(
-                            color: Color(0xFFB0B0B0),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                    maxLines: 1,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget buildRecommendationLoading() {
     return Container(
       width: 238,
-      height: 340,
+      height: 315,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
       ),
       child: const Center(
-        child: CircularProgressIndicator(
-          color: darkTeal,
-          strokeWidth: 2,
-        ),
+        child: CircularProgressIndicator(color: darkTeal, strokeWidth: 2),
       ),
     );
   }
@@ -719,21 +526,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget buildEmptyRecommendationCard() {
     return Container(
       width: double.infinity,
-      height: 120,
-      padding: const EdgeInsets.all(18),
+      height: 210,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
       ),
-      child: const Center(
-        child: Text(
-          'Data kost belum tersedia',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 15.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+      child: const EmptyState(
+        icon: Icons.home_work_outlined,
+        title: 'Data kost belum tersedia',
+        message: 'Nanti daftar rekomendasi kost akan muncul di bagian ini.',
       ),
     );
   }
@@ -744,10 +546,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required double height,
   }) {
     if (imageUrl.trim().isEmpty) {
-      return buildImagePlaceholder(
-        width: width,
-        height: height,
-      );
+      return buildImagePlaceholder(width: width, height: height);
     }
 
     return Image.network(
@@ -756,10 +555,7 @@ class _HomeScreenState extends State<HomeScreen> {
       height: height,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
-        return buildImagePlaceholder(
-          width: width,
-          height: height,
-        );
+        return buildImagePlaceholder(width: width, height: height);
       },
       loadingBuilder: (context, child, progress) {
         if (progress == null) {
@@ -771,10 +567,7 @@ class _HomeScreenState extends State<HomeScreen> {
           height: height,
           color: const Color(0xFFEAF6F4),
           child: const Center(
-            child: CircularProgressIndicator(
-              color: darkTeal,
-              strokeWidth: 2,
-            ),
+            child: CircularProgressIndicator(color: darkTeal, strokeWidth: 2),
           ),
         );
       },
@@ -790,11 +583,18 @@ class _HomeScreenState extends State<HomeScreen> {
       height: height,
       color: const Color(0xFFEAF6F4),
       child: const Center(
-        child: Icon(
-          Icons.home_work_outlined,
-          color: darkTeal,
-          size: 42,
-        ),
+        child: Icon(Icons.home_work_outlined, color: darkTeal, size: 42),
+      ),
+    );
+  }
+
+  Widget buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        color: Colors.black,
+        fontSize: 21,
+        fontWeight: FontWeight.w800,
       ),
     );
   }
@@ -802,9 +602,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void openCariKost() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const CariKostScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const CariKostScreen()),
     );
   }
 
@@ -815,117 +613,67 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => DetailKostScreen(
-          kostId: kostId,
+      MaterialPageRoute(builder: (_) => DetailKostScreen(kostId: kostId)),
+    );
+  }
+
+  void openHistory() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Halaman riwayat akan disambungkan setelah page dirapikan.',
         ),
+        duration: Duration(seconds: 1),
       ),
     );
   }
 
-  Widget buildBottomNavigationBar() {
-    return Container(
-      height: 82,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            buildNavItem(
-              index: 0,
-              icon: Icons.home_rounded,
-            ),
-            buildNavItem(
-              index: 1,
-              icon: Icons.search_rounded,
-            ),
-            buildNavItem(
-              index: 2,
-              icon: Icons.history_rounded,
-            ),
-            buildNavItem(
-              index: 3,
-              icon: Icons.person_rounded,
-            ),
-          ],
-        ),
-      ),
+  void openWishlist() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const WishlistScreen()),
     );
   }
 
-  Widget buildNavItem({
-    required int index,
-    required IconData icon,
-  }) {
-    final bool isActive = selectedNavIndex == index;
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        if (index == selectedNavIndex) {
-          return;
-        }
-
-        if (index == 1) {
-          openCariKost();
-          return;
-        }
-
-        if (index == 2) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Halaman riwayat belum dibuat'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-          return;
-        }
-
-        if (index == 3) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Halaman profil belum dibuat'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-          return;
-        }
-      },
-      child: SizedBox(
-        width: 64,
-        height: 64,
-        child: Center(
-          child: Icon(
-            icon,
-            size: 38,
-            color: isActive ? darkTeal : Colors.grey.shade300,
-          ),
-        ),
-      ),
+  void openProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
   }
 
-  static String formatRupiah(int value) {
-    final text = value.toString();
-    final reversed = text.split('').reversed.toList();
-    final buffer = StringBuffer();
-
-    for (int i = 0; i < reversed.length; i++) {
-      if (i > 0 && i % 3 == 0) {
-        buffer.write('.');
-      }
-
-      buffer.write(reversed[i]);
+  void handleBottomNavTap(int index) {
+    if (index == selectedNavIndex) {
+      return;
     }
 
-    final result = buffer.toString().split('').reversed.join();
-    return 'Rp $result';
+    if (index == 1) {
+      openCariKost();
+      return;
+    }
+
+    if (index == 2) {
+      openHistory();
+      return;
+    }
+
+    if (index == 3) {
+      openWishlist();
+      return;
+    }
+
+    if (index == 4) {
+      openProfile();
+      return;
+    }
   }
 
-  static String formatRating(double value) {
-    return '${value.toStringAsFixed(1).replaceAll('.', ',')}/5';
+  void showWishlistInfo() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Fitur wishlist akan disambungkan setelah page selesai.'),
+        duration: Duration(seconds: 1),
+      ),
+    );
   }
 }
