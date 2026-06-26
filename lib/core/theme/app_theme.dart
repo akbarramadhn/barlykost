@@ -7,13 +7,31 @@ class ThemeApp {
 
   static const Color textDark = Color(0xFF1E1E1E);
   static const Color textGrey = Color(0xFF777777);
-  static const Color whiteColor = Colors.white;
+  static const Color textLight = Color(0xFFFFFFFF);
 
-  // Background gradient untuk splash, login, register, dll
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color black = Color(0xFF000000);
+
+  static const Color softBlue = Color(0xFFD8ECFF);
+  static const Color softGreen = Color(0xFFC8DFA4);
+  static const Color softBackground = Color(0xFFEAF6F4);
+
+  static const Color locationBlue = Color(0xFF6AB8FF);
+  static const Color starColor = Color(0xFFFFB000);
+
+  static const Color successGreen = Color(0xFF0A9B25);
+  static const Color pendingOrange = Color(0xFFFF9800);
+  static const Color cancelledRed = Color(0xFFE53935);
+  static const Color dangerRed = Color(0xFFE53935);
+
+  static const Color borderGrey = Color(0xFFE0E0E0);
+  static const Color lightGrey = Color(0xFFDADADA);
+  static const Color priceDark = Color(0xFF2D3438);
+
   static const BoxDecoration backgroundGradient = BoxDecoration(
     gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
       colors: [
         primaryDark,
         primaryLight,
@@ -21,72 +39,206 @@ class ThemeApp {
     ),
   );
 
-  static ThemeData lightTheme = ThemeData(
-    useMaterial3: true,
-    scaffoldBackgroundColor: whiteColor,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: primaryDark,
-      primary: primaryDark,
+  static const BoxDecoration backgroundGradientVertical = BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        primaryDark,
+        primaryLight,
+      ],
     ),
+  );
 
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.transparent,
-      foregroundColor: textDark,
-      elevation: 0,
-      centerTitle: false,
-    ),
-
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
+  static ThemeData get lightTheme {
+    return ThemeData(
+      useMaterial3: true,
+      scaffoldBackgroundColor: white,
+      primaryColor: primaryDark,
+      colorScheme: const ColorScheme.light(
+        primary: primaryDark,
+        secondary: primaryLight,
+        surface: white,
+        error: dangerRed,
       ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Colors.black26,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        foregroundColor: textDark,
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          color: textDark,
+          fontSize: 22,
+          fontWeight: FontWeight.w900,
+        ),
+        iconTheme: IconThemeData(
+          color: textDark,
+          size: 28,
         ),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: primaryDark,
-          width: 1.5,
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(
+          color: textDark,
+          fontSize: 28,
+          fontWeight: FontWeight.w900,
+          height: 1.15,
+        ),
+        headlineMedium: TextStyle(
+          color: textDark,
+          fontSize: 24,
+          fontWeight: FontWeight.w900,
+          height: 1.15,
+        ),
+        headlineSmall: TextStyle(
+          color: textDark,
+          fontSize: 21,
+          fontWeight: FontWeight.w800,
+          height: 1.15,
+        ),
+        titleLarge: TextStyle(
+          color: textDark,
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          height: 1.2,
+        ),
+        titleMedium: TextStyle(
+          color: textDark,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+        bodyLarge: TextStyle(
+          color: textDark,
+          fontSize: 15.5,
+          fontWeight: FontWeight.w500,
+          height: 1.35,
+        ),
+        bodyMedium: TextStyle(
+          color: textGrey,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 1.35,
+        ),
+        bodySmall: TextStyle(
+          color: textGrey,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          height: 1.3,
         ),
       ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Colors.red,
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: buttonColor,
+          foregroundColor: white,
+          elevation: 0,
+          minimumSize: const Size(double.infinity, 54),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Colors.red,
-          width: 1.5,
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: white,
+        hintStyle: const TextStyle(
+          color: textGrey,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(
+            color: borderGrey,
+            width: 1.3,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(
+            color: borderGrey,
+            width: 1.3,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(
+            color: primaryDark,
+            width: 1.5,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(
+            color: dangerRed,
+            width: 1.3,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(
+            color: dangerRed,
+            width: 1.5,
+          ),
         ),
       ),
-    ),
-
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
+      cardTheme: CardThemeData(
+        color: white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
         backgroundColor: buttonColor,
-        foregroundColor: Colors.white,
-        minimumSize: const Size(double.infinity, 52),
+        contentTextStyle: const TextStyle(
+          color: white,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
       ),
-    ),
-  );
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: white,
+        selectedItemColor: buttonColor,
+        unselectedItemColor: Color(0xFFD8D8D8),
+        selectedLabelStyle: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
+      ),
+    );
+  }
+
+  static BoxShadow softShadow({
+    double alpha = 0.08,
+    double blurRadius = 14,
+    Offset offset = const Offset(0, 7),
+  }) {
+    return BoxShadow(
+      color: black.withValues(alpha: alpha),
+      blurRadius: blurRadius,
+      offset: offset,
+    );
+  }
+
+  static BorderRadius radius(double value) {
+    return BorderRadius.circular(value);
+  }
 }
