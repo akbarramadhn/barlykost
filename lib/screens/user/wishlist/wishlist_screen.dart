@@ -6,6 +6,7 @@ import '../../../services/wishlist_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
 import '../history/history_screen.dart';
+import '../profile/profile_screen.dart';
 import '../kost/daftarkost.dart';
 import '../kost/kost_detail.dart';
 
@@ -109,9 +110,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
   @override
   Widget build(BuildContext context) {
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        textScaler: const TextScaler.linear(1.0),
-      ),
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: const TextScaler.linear(1.0)),
       child: Scaffold(
         backgroundColor: ThemeApp.primaryDark,
         body: Column(
@@ -158,12 +159,16 @@ class _WishlistScreenState extends State<WishlistScreen> {
   Widget buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 54, 20, 28),
-      decoration: const BoxDecoration(
+      padding: const EdgeInsets.fromLTRB(18, 48, 18, 16),
+      decoration: BoxDecoration(
         color: ThemeApp.white,
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(26),
-        ),
+        boxShadow: [
+          ThemeApp.softShadow(
+            alpha: 0.05,
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -172,31 +177,35 @@ class _WishlistScreenState extends State<WishlistScreen> {
             onTap: () {
               Navigator.pop(context);
             },
-            child: const SizedBox(
-              width: 46,
-              height: 46,
-              child: Icon(
+            child: Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.centerLeft,
+              child: const Icon(
                 Icons.arrow_back_ios_new_rounded,
                 color: ThemeApp.textDark,
-                size: 30,
+                size: 26,
               ),
             ),
           ),
           const Expanded(
-            child: Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
               child: Text(
                 'Wishlist',
+                textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: ThemeApp.textDark,
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.w900,
+                  height: 1.1,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 46),
+          const SizedBox(width: 42, height: 42),
         ],
       ),
     );
@@ -477,10 +486,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
     required double height,
   }) {
     if (imageUrl.trim().isEmpty) {
-      return buildImagePlaceholder(
-        width: width,
-        height: height,
-      );
+      return buildImagePlaceholder(width: width, height: height);
     }
 
     return Image.network(
@@ -489,10 +495,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       height: height,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
-        return buildImagePlaceholder(
-          width: width,
-          height: height,
-        );
+        return buildImagePlaceholder(width: width, height: height);
       },
       loadingBuilder: (context, child, progress) {
         if (progress == null) {
@@ -560,11 +563,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => DetailKostScreen(
-          kostId: kostId,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => DetailKostScreen(kostId: kostId)),
     );
   }
 
@@ -574,19 +573,14 @@ class _WishlistScreenState extends State<WishlistScreen> {
     }
 
     if (index == 0) {
-      Navigator.popUntil(
-        context,
-        (route) => route.isFirst,
-      );
+      Navigator.popUntil(context, (route) => route.isFirst);
       return;
     }
 
     if (index == 1) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => const CariKostScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const CariKostScreen()),
       );
       return;
     }
@@ -594,20 +588,17 @@ class _WishlistScreenState extends State<WishlistScreen> {
     if (index == 2) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => const HistoryScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const HistoryScreen()),
       );
       return;
     }
 
     if (index == 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Halaman profil akan disambungkan setelah dirapikan'),
-          duration: Duration(seconds: 1),
-        ),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ProfileScreen()),
       );
+      return;
     }
   }
 }

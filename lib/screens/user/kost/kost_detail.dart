@@ -4,17 +4,17 @@ import '../../../core/theme/app_theme.dart';
 import '../../../models/facility.dart';
 import '../../../models/kost.dart';
 import '../../../services/kost_service.dart';
+import '../../../services/wishlist_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
+import '../history/history_screen.dart';
+import '../profile/profile_screen.dart';
 import 'daftarkost.dart';
 
 class DetailKostScreen extends StatefulWidget {
   final String kostId;
 
-  const DetailKostScreen({
-    super.key,
-    required this.kostId,
-  });
+  const DetailKostScreen({super.key, required this.kostId});
 
   @override
   State<DetailKostScreen> createState() => _DetailKostScreenState();
@@ -22,30 +22,30 @@ class DetailKostScreen extends StatefulWidget {
 
 class _DetailKostScreenState extends State<DetailKostScreen> {
   final KostService kostService = KostService();
+  final WishlistService wishlistService = WishlistService();
 
   late Future<_KostDetailData> detailFuture;
 
   int currentImageIndex = 0;
   int selectedNavIndex = 0;
 
-  static const Color darkTeal = ThemeApp.buttonColor;
-  static const Color softBlue = Color(0xFFD8ECFF);
-  static const Color locationBlue = Color(0xFF6AB8FF);
-  static const Color starColor = Color(0xFFFFB000);
-  static const Color greenStatus = Color(0xFF0A9B25);
+  bool isWishlisted = false;
+  bool isWishlistLoading = false;
 
   @override
   void initState() {
     super.initState();
     detailFuture = fetchDetailData();
+    loadWishlistStatus();
   }
 
   Future<_KostDetailData> fetchDetailData() async {
     try {
       final kost = await kostService.fetchKostById(widget.kostId);
       final images = await kostService.fetchKostImages(widget.kostId);
-      final facilities =
-          await kostService.fetchFacilitiesByKostId(widget.kostId);
+      final facilities = await kostService.fetchFacilitiesByKostId(
+        widget.kostId,
+      );
 
       return _KostDetailData(
         kost: kost,
@@ -58,20 +58,85 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
     }
   }
 
+  Future<void> loadWishlistStatus() async {
+    final result = await wishlistService.isWishlisted(widget.kostId);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      isWishlisted = result;
+    });
+  }
+
+  Future<void> toggleWishlist() async {
+    if (isWishlistLoading) {
+      return;
+    }
+
+    setState(() {
+      isWishlistLoading = true;
+    });
+
+    final success = await wishlistService.toggleWishlist(widget.kostId);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (!success) {
+      setState(() {
+        isWishlistLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal memperbarui wishlist'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+
+      return;
+    }
+
+    final newStatus = await wishlistService.isWishlisted(widget.kostId);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      isWishlisted = newStatus;
+      isWishlistLoading = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          newStatus
+              ? 'Kost berhasil ditambahkan ke wishlist'
+              : 'Kost dihapus dari wishlist',
+        ),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
   Future<void> refreshData() async {
     setState(() {
       detailFuture = fetchDetailData();
     });
 
-    await detailFuture;
+    await Future.wait([detailFuture, loadWishlistStatus()]);
   }
 
   @override
   Widget build(BuildContext context) {
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        textScaler: const TextScaler.linear(1.0),
-      ),
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: const TextScaler.linear(1.0)),
       child: Scaffold(
         backgroundColor: ThemeApp.primaryDark,
         body: Container(
@@ -83,9 +148,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
-                  child: CircularProgressIndicator(
-                    color: darkTeal,
-                  ),
+                  child: CircularProgressIndicator(color: ThemeApp.buttonColor),
                 );
               }
 
@@ -93,7 +156,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
 
               if (data.kost.id.trim().isEmpty) {
                 return RefreshIndicator(
-                  color: darkTeal,
+                  color: ThemeApp.buttonColor,
                   onRefresh: refreshData,
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -114,7 +177,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
               }
 
               return RefreshIndicator(
-                color: darkTeal,
+                color: ThemeApp.buttonColor,
                 onRefresh: refreshData,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -171,10 +234,10 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
                   return Container(
                     width: double.infinity,
                     height: 365,
-                    color: const Color(0xFFEAF6F4),
+                    color: ThemeApp.softBackground,
                     child: const Center(
                       child: CircularProgressIndicator(
-                        color: darkTeal,
+                        color: ThemeApp.buttonColor,
                         strokeWidth: 2,
                       ),
                     ),
@@ -217,11 +280,11 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
     return Container(
       width: double.infinity,
       height: 365,
-      color: const Color(0xFFEAF6F4),
+      color: ThemeApp.softBackground,
       child: const Center(
         child: Icon(
           Icons.home_work_outlined,
-          color: darkTeal,
+          color: ThemeApp.buttonColor,
           size: 80,
         ),
       ),
@@ -239,21 +302,17 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
         width: 54,
         height: 54,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.94),
+          color: ThemeApp.white.withValues(alpha: 0.94),
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.10),
+            ThemeApp.softShadow(
+              alpha: 0.10,
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
           ],
         ),
-        child: Icon(
-          icon,
-          color: darkTeal,
-          size: 28,
-        ),
+        child: Icon(icon, color: ThemeApp.buttonColor, size: 28),
       ),
     );
   }
@@ -270,12 +329,9 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
           width: isActive ? 14 : 12,
           height: isActive ? 14 : 12,
           decoration: BoxDecoration(
-            color: isActive ? darkTeal : Colors.white,
+            color: isActive ? ThemeApp.buttonColor : ThemeApp.white,
             shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white,
-              width: 1,
-            ),
+            border: Border.all(color: ThemeApp.white, width: 1),
           ),
         );
       }),
@@ -292,14 +348,9 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [
-            ThemeApp.primaryDark,
-            ThemeApp.primaryLight,
-          ],
+          colors: [ThemeApp.primaryDark, ThemeApp.primaryLight],
         ),
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,7 +394,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Colors.black,
+                  color: ThemeApp.black,
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   height: 1.15,
@@ -352,23 +403,23 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
               const SizedBox(height: 18),
               buildInfoRow(
                 icon: Icons.location_on_outlined,
-                iconColor: locationBlue,
+                iconColor: ThemeApp.locationBlue,
                 text: kost.location,
-                textColor: Colors.black,
+                textColor: ThemeApp.black,
               ),
               const SizedBox(height: 10),
               buildInfoRow(
                 icon: Icons.star_rounded,
-                iconColor: starColor,
+                iconColor: ThemeApp.starColor,
                 text: '${formatRating(kost.rating)} (100 reviewers)',
-                textColor: Colors.white,
+                textColor: ThemeApp.white,
               ),
               const SizedBox(height: 10),
               buildInfoRow(
                 icon: Icons.check_circle_rounded,
-                iconColor: greenStatus,
+                iconColor: ThemeApp.successGreen,
                 text: '${kost.available} Tersedia',
-                textColor: Colors.black,
+                textColor: ThemeApp.black,
               ),
             ],
           ),
@@ -387,7 +438,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
                   formatRupiah(kost.price),
                   maxLines: 1,
                   style: const TextStyle(
-                    color: Color(0xFF263238),
+                    color: ThemeApp.priceDark,
                     fontSize: 21,
                     fontWeight: FontWeight.w900,
                   ),
@@ -396,24 +447,44 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
               const Text(
                 '/Perbulan',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: ThemeApp.white,
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 18),
-              GestureDetector(
-                onTap: showWishlistInfo,
-                child: const Icon(
-                  Icons.favorite_border_rounded,
-                  color: Color(0xFF777777),
-                  size: 36,
-                ),
-              ),
+              buildWishlistButton(),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget buildWishlistButton() {
+    return GestureDetector(
+      onTap: toggleWishlist,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        child: isWishlistLoading
+            ? const SizedBox(
+                key: ValueKey('wishlist_loading'),
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  color: ThemeApp.buttonColor,
+                  strokeWidth: 2,
+                ),
+              )
+            : Icon(
+                isWishlisted
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                key: ValueKey(isWishlisted),
+                color: isWishlisted ? Colors.redAccent : ThemeApp.textGrey,
+                size: 38,
+              ),
+      ),
     );
   }
 
@@ -425,11 +496,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
   }) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: iconColor,
-          size: 23,
-        ),
+        Icon(icon, color: iconColor, size: 23),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
@@ -448,13 +515,11 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
     );
   }
 
-  Widget buildSectionHeader({
-    required String title,
-  }) {
+  Widget buildSectionHeader({required String title}) {
     return Text(
       title,
       style: const TextStyle(
-        color: Colors.black,
+        color: ThemeApp.black,
         fontSize: 21,
         fontWeight: FontWeight.w800,
       ),
@@ -469,13 +534,13 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.28),
+          color: ThemeApp.white.withValues(alpha: 0.28),
           borderRadius: BorderRadius.circular(18),
         ),
         child: const Text(
           'Fasilitas belum tersedia',
           style: TextStyle(
-            color: Colors.black,
+            color: ThemeApp.black,
             fontSize: 15.5,
             fontWeight: FontWeight.w700,
           ),
@@ -502,12 +567,12 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
                     width: boxSize,
                     height: boxSize,
                     decoration: BoxDecoration(
-                      color: softBlue,
+                      color: ThemeApp.softBlue,
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: Icon(
                       facility.icon,
-                      color: darkTeal,
+                      color: ThemeApp.buttonColor,
                       size: boxSize * 0.42,
                     ),
                   ),
@@ -521,7 +586,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: Colors.black,
+                          color: ThemeApp.black,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700,
                           height: 1.08,
@@ -545,7 +610,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
       '3. Penyewa kost tidak diperkenankan merokok di dalam kamar maupun di lingkungan rumah kost.',
       textAlign: TextAlign.justify,
       style: TextStyle(
-        color: Colors.black,
+        color: ThemeApp.black,
         fontSize: 15.5,
         fontWeight: FontWeight.w500,
         height: 1.32,
@@ -562,7 +627,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
       description,
       textAlign: TextAlign.justify,
       style: const TextStyle(
-        color: Colors.black,
+        color: ThemeApp.black,
         fontSize: 15.5,
         fontWeight: FontWeight.w500,
         height: 1.32,
@@ -580,7 +645,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
           'Area ${kost.location}, Jakarta Selatan',
           textAlign: TextAlign.justify,
           style: const TextStyle(
-            color: Colors.black,
+            color: ThemeApp.black,
             fontSize: 15.5,
             fontWeight: FontWeight.w500,
             height: 1.32,
@@ -591,20 +656,18 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
           width: double.infinity,
           height: 126,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.90),
+            color: ThemeApp.white.withValues(alpha: 0.90),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Stack(
             children: [
               Positioned.fill(
-                child: CustomPaint(
-                  painter: MapPlaceholderPainter(),
-                ),
+                child: CustomPaint(painter: MapPlaceholderPainter()),
               ),
               const Center(
                 child: Icon(
                   Icons.location_on_rounded,
-                  color: darkTeal,
+                  color: ThemeApp.buttonColor,
                   size: 42,
                 ),
               ),
@@ -649,8 +712,8 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
           );
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: darkTeal,
-          foregroundColor: Colors.white,
+          backgroundColor: ThemeApp.buttonColor,
+          foregroundColor: ThemeApp.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(34),
@@ -658,10 +721,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
         ),
         child: const Text(
           'Pesan Kost',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
       ),
     );
@@ -669,48 +729,37 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
 
   void handleBottomNavTap(int index) {
     if (index == selectedNavIndex) {
-      Navigator.popUntil(
-        context,
-        (route) => route.isFirst,
-      );
+      Navigator.popUntil(context, (route) => route.isFirst);
       return;
     }
 
     if (index == 0) {
-      Navigator.popUntil(
-        context,
-        (route) => route.isFirst,
-      );
+      Navigator.popUntil(context, (route) => route.isFirst);
       return;
     }
 
     if (index == 1) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => const CariKostScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const CariKostScreen()),
       );
       return;
     }
 
     if (index == 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Halaman riwayat akan disambungkan setelah dirapikan'),
-          duration: Duration(seconds: 1),
-        ),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HistoryScreen()),
       );
       return;
     }
 
     if (index == 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Halaman profil akan disambungkan setelah dirapikan'),
-          duration: Duration(seconds: 1),
-        ),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ProfileScreen()),
       );
+      return;
     }
   }
 
@@ -718,15 +767,6 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Fitur share belum disambungkan'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
-
-  void showWishlistInfo() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Wishlist akan disambungkan setelah page selesai'),
         duration: Duration(seconds: 1),
       ),
     );
@@ -786,18 +826,12 @@ class DistanceInfoRow extends StatelessWidget {
     required this.subtitle,
   });
 
-  static const Color darkTeal = ThemeApp.buttonColor;
-
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: Colors.black,
-          size: 28,
-        ),
+        Icon(icon, color: ThemeApp.black, size: 28),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
@@ -806,7 +840,7 @@ class DistanceInfoRow extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  color: Colors.black,
+                  color: ThemeApp.black,
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
                 ),
@@ -815,7 +849,7 @@ class DistanceInfoRow extends StatelessWidget {
               Text(
                 subtitle,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: ThemeApp.white,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   height: 1.25,

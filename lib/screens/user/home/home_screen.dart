@@ -50,16 +50,30 @@ class _HomeScreenState extends State<HomeScreen> {
         return UserModel.empty();
       }
 
-      final email = authUser.email ?? '';
+      final email = authUser.email?.trim().toLowerCase() ?? '';
+
+      Map<String, dynamic>? response = await supabase
+          .from('users')
+          .select(
+            'id, role, email, phone, full_name, created_at, profile_image_url',
+          )
+          .eq('id', authUser.id)
+          .maybeSingle();
+
+      if (response != null) {
+        return UserModel.fromMap(Map<String, dynamic>.from(response));
+      }
 
       if (email.isEmpty) {
         return UserModel.empty();
       }
 
-      final response = await supabase
+      response = await supabase
           .from('users')
-          .select('id, role, email, phone, full_name')
-          .eq('email', email)
+          .select(
+            'id, role, email, phone, full_name, created_at, profile_image_url',
+          )
+          .ilike('email', email)
           .maybeSingle();
 
       if (response == null) {
@@ -88,15 +102,18 @@ class _HomeScreenState extends State<HomeScreen> {
       kostFuture = fetchKosts();
     });
 
-    await Future.wait([userFuture, kostFuture]);
+    await Future.wait([
+      userFuture,
+      kostFuture,
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
     return MediaQuery(
-      data: MediaQuery.of(
-        context,
-      ).copyWith(textScaler: const TextScaler.linear(1.0)),
+      data: MediaQuery.of(context).copyWith(
+        textScaler: const TextScaler.linear(1.0),
+      ),
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Container(
@@ -143,50 +160,55 @@ class _HomeScreenState extends State<HomeScreen> {
       future: userFuture,
       builder: (context, snapshot) {
         final user = snapshot.data ?? UserModel.empty();
-        final displayName = user.fullName.trim().isEmpty
+        final displayName = user.displayName.trim().isEmpty
             ? 'Penyewa'
-            : user.fullName.trim();
+            : user.displayName.trim();
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            buildAvatar(),
+            GestureDetector(
+              onTap: openProfile,
+              child: buildAvatar(user),
+            ),
             const SizedBox(width: 16),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hi, $displayName',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 21,
-                      fontWeight: FontWeight.w900,
-                      height: 1.1,
+              child: GestureDetector(
+                onTap: openProfile,
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hi, $displayName',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Mau cari kost-kostan?',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Mau cari kost-kostan?',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(width: 10),
             GestureDetector(
-              onTap: () {
-                openWishlist();
-              },
+              onTap: openWishlist,
               child: const Icon(
                 Icons.favorite_border_rounded,
                 color: darkTeal,
@@ -222,16 +244,83 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildAvatar() {
+  Widget buildAvatar(UserModel user) {
+    if (user.profileImageUrl.trim().isNotEmpty) {
+      return Container(
+        width: 74,
+        height: 74,
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white,
+            width: 2,
+          ),
+          boxShadow: [
+            ThemeApp.softShadow(
+              alpha: 0.08,
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.network(
+            user.profileImageUrl,
+            width: 70,
+            height: 70,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) {
+                return child;
+              }
+
+              return Container(
+                color: const Color(0xFFC8DFA4),
+                child: const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: darkTeal,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: const Color(0xFFC8DFA4),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: darkTeal,
+                  size: 50,
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: 74,
       height: 74,
       decoration: BoxDecoration(
         color: const Color(0xFFC8DFA4),
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
+        border: Border.all(
+          color: Colors.white,
+          width: 2,
+        ),
       ),
-      child: const Icon(Icons.person_rounded, color: darkTeal, size: 50),
+      child: const Icon(
+        Icons.person_rounded,
+        color: darkTeal,
+        size: 50,
+      ),
     );
   }
 
@@ -251,8 +340,14 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          buildCategoryItem(icon: Icons.savings_outlined, title: 'Termurah'),
-          buildCategoryItem(icon: Icons.receipt_long_rounded, title: 'Tahunan'),
+          buildCategoryItem(
+            icon: Icons.savings_outlined,
+            title: 'Termurah',
+          ),
+          buildCategoryItem(
+            icon: Icons.receipt_long_rounded,
+            title: 'Tahunan',
+          ),
           buildCategoryItem(
             icon: Icons.calendar_month_rounded,
             title: 'Bulanan',
@@ -266,7 +361,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildCategoryItem({required IconData icon, required String title}) {
+  Widget buildCategoryItem({
+    required IconData icon,
+    required String title,
+  }) {
     return GestureDetector(
       onTap: openCariKost,
       child: SizedBox(
@@ -282,7 +380,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: softBlue,
                 borderRadius: BorderRadius.circular(22),
               ),
-              child: Icon(icon, color: darkTeal, size: 35),
+              child: Icon(
+                icon,
+                color: darkTeal,
+                size: 35,
+              ),
             ),
             const SizedBox(height: 9),
             SizedBox(
@@ -397,10 +499,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildHistoryInfoRow({required IconData icon, required String text}) {
+  Widget buildHistoryInfoRow({
+    required IconData icon,
+    required String text,
+  }) {
     return Row(
       children: [
-        Icon(icon, color: locationBlue, size: 25),
+        Icon(
+          icon,
+          color: locationBlue,
+          size: 25,
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
@@ -432,7 +541,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: const Center(
-        child: CircularProgressIndicator(color: darkTeal, strokeWidth: 2),
+        child: CircularProgressIndicator(
+          color: darkTeal,
+          strokeWidth: 2,
+        ),
       ),
     );
   }
@@ -518,7 +630,10 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(22),
       ),
       child: const Center(
-        child: CircularProgressIndicator(color: darkTeal, strokeWidth: 2),
+        child: CircularProgressIndicator(
+          color: darkTeal,
+          strokeWidth: 2,
+        ),
       ),
     );
   }
@@ -546,7 +661,10 @@ class _HomeScreenState extends State<HomeScreen> {
     required double height,
   }) {
     if (imageUrl.trim().isEmpty) {
-      return buildImagePlaceholder(width: width, height: height);
+      return buildImagePlaceholder(
+        width: width,
+        height: height,
+      );
     }
 
     return Image.network(
@@ -555,7 +673,10 @@ class _HomeScreenState extends State<HomeScreen> {
       height: height,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
-        return buildImagePlaceholder(width: width, height: height);
+        return buildImagePlaceholder(
+          width: width,
+          height: height,
+        );
       },
       loadingBuilder: (context, child, progress) {
         if (progress == null) {
@@ -567,7 +688,10 @@ class _HomeScreenState extends State<HomeScreen> {
           height: height,
           color: const Color(0xFFEAF6F4),
           child: const Center(
-            child: CircularProgressIndicator(color: darkTeal, strokeWidth: 2),
+            child: CircularProgressIndicator(
+              color: darkTeal,
+              strokeWidth: 2,
+            ),
           ),
         );
       },
@@ -583,7 +707,11 @@ class _HomeScreenState extends State<HomeScreen> {
       height: height,
       color: const Color(0xFFEAF6F4),
       child: const Center(
-        child: Icon(Icons.home_work_outlined, color: darkTeal, size: 42),
+        child: Icon(
+          Icons.home_work_outlined,
+          color: darkTeal,
+          size: 42,
+        ),
       ),
     );
   }
@@ -602,7 +730,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void openCariKost() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CariKostScreen()),
+      MaterialPageRoute(
+        builder: (_) => const CariKostScreen(),
+      ),
     );
   }
 
@@ -613,17 +743,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => DetailKostScreen(kostId: kostId)),
+      MaterialPageRoute(
+        builder: (_) => DetailKostScreen(
+          kostId: kostId,
+        ),
+      ),
     );
   }
 
   void openHistory() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Halaman riwayat akan disambungkan setelah page dirapikan.',
-        ),
-        duration: Duration(seconds: 1),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const HistoryScreen(),
       ),
     );
   }
@@ -631,15 +763,25 @@ class _HomeScreenState extends State<HomeScreen> {
   void openWishlist() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const WishlistScreen()),
+      MaterialPageRoute(
+        builder: (_) => const WishlistScreen(),
+      ),
     );
   }
 
-  void openProfile() {
-    Navigator.push(
+  Future<void> openProfile() async {
+    await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+      MaterialPageRoute(
+        builder: (_) => const ProfileScreen(),
+      ),
     );
+
+    if (!mounted) {
+      return;
+    }
+
+    await refreshData();
   }
 
   void handleBottomNavTap(int index) {
@@ -658,22 +800,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (index == 3) {
-      openWishlist();
-      return;
-    }
-
-    if (index == 4) {
       openProfile();
       return;
     }
-  }
-
-  void showWishlistInfo() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fitur wishlist akan disambungkan setelah page selesai.'),
-        duration: Duration(seconds: 1),
-      ),
-    );
   }
 }

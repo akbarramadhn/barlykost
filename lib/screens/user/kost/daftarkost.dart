@@ -7,6 +7,8 @@ import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
 import '../../../widgets/kostcard.dart';
 import '../../../widgets/searchbar.dart';
+import '../../user/history/history_screen.dart';
+import '../../user/profile/profile_screen.dart';
 import 'kost_detail.dart';
 
 class CariKostScreen extends StatefulWidget {
@@ -28,11 +30,7 @@ class _CariKostScreenState extends State<CariKostScreen> {
   static const Color darkTeal = ThemeApp.buttonColor;
   static const Color softGrey = Color(0xFF777777);
 
-  final List<String> filters = const [
-    'Rekomendasi',
-    'Termurah',
-    'Termahal',
-  ];
+  final List<String> filters = const ['Rekomendasi', 'Termurah', 'Termahal'];
 
   @override
   void initState() {
@@ -104,9 +102,9 @@ class _CariKostScreenState extends State<CariKostScreen> {
   @override
   Widget build(BuildContext context) {
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        textScaler: const TextScaler.linear(1.0),
-      ),
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: const TextScaler.linear(1.0)),
       child: Scaffold(
         backgroundColor: ThemeApp.primaryDark,
         body: Container(
@@ -120,9 +118,7 @@ class _CariKostScreenState extends State<CariKostScreen> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
-                    child: CircularProgressIndicator(
-                      color: darkTeal,
-                    ),
+                    child: CircularProgressIndicator(color: darkTeal),
                   );
                 }
 
@@ -332,11 +328,7 @@ class _CariKostScreenState extends State<CariKostScreen> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => DetailKostScreen(
-          kostId: kostId,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => DetailKostScreen(kostId: kostId)),
     );
   }
 
@@ -351,22 +343,19 @@ class _CariKostScreenState extends State<CariKostScreen> {
     }
 
     if (index == 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Halaman riwayat akan disambungkan setelah dirapikan'),
-          duration: Duration(seconds: 1),
-        ),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HistoryScreen()),
       );
       return;
     }
 
     if (index == 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Halaman profil akan disambungkan setelah dirapikan'),
-          duration: Duration(seconds: 1),
-        ),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ProfileScreen()),
       );
+      return;
     }
   }
 }

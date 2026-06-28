@@ -7,29 +7,44 @@ class WishlistService {
   final SupabaseClient supabase = Supabase.instance.client;
 
   Future<String> getCurrentUserId() async {
-    final authUser = supabase.auth.currentUser;
+    try {
+      final authUser = supabase.auth.currentUser;
 
-    if (authUser == null) {
+      if (authUser == null) {
+        return '';
+      }
+
+      final email = authUser.email?.trim().toLowerCase() ?? '';
+
+      Map<String, dynamic>? response = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', authUser.id)
+          .maybeSingle();
+
+      if (response != null) {
+        return response['id']?.toString() ?? '';
+      }
+
+      if (email.isEmpty) {
+        return '';
+      }
+
+      response = await supabase
+          .from('users')
+          .select('id')
+          .ilike('email', email)
+          .maybeSingle();
+
+      if (response == null) {
+        return '';
+      }
+
+      return response['id']?.toString() ?? '';
+    } catch (error) {
+      debugPrint('Get current user id wishlist error: $error');
       return '';
     }
-
-    final email = authUser.email ?? '';
-
-    if (email.trim().isEmpty) {
-      return '';
-    }
-
-    final response = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .maybeSingle();
-
-    if (response == null) {
-      return '';
-    }
-
-    return response['id']?.toString() ?? '';
   }
 
   Future<bool> isWishlisted(String kostId) async {
@@ -178,6 +193,16 @@ class WishlistService {
     } catch (error) {
       debugPrint('Fetch wishlist kosts error: $error');
       return [];
+    }
+  }
+
+  Future<int> countWishlist() async {
+    try {
+      final wishlistKosts = await fetchWishlistKosts();
+      return wishlistKosts.length;
+    } catch (error) {
+      debugPrint('Count wishlist error: $error');
+      return 0;
     }
   }
 }

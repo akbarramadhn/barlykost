@@ -7,29 +7,40 @@ class BookingService {
   final SupabaseClient supabase = Supabase.instance.client;
 
   Future<String> getCurrentUserId() async {
-    final authUser = supabase.auth.currentUser;
+    try {
+      final authUser = supabase.auth.currentUser;
 
-    if (authUser == null) {
+      if (authUser == null) {
+        return '';
+      }
+
+      final email = authUser.email?.trim().toLowerCase() ?? '';
+
+      if (email.isEmpty) {
+        return '';
+      }
+
+      Map<String, dynamic>? response = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', authUser.id)
+          .maybeSingle();
+
+      response ??= await supabase
+          .from('users')
+          .select('id')
+          .ilike('email', email)
+          .maybeSingle();
+
+      if (response == null) {
+        return '';
+      }
+
+      return response['id']?.toString() ?? '';
+    } catch (error) {
+      debugPrint('Get current user id error: $error');
       return '';
     }
-
-    final email = authUser.email ?? '';
-
-    if (email.trim().isEmpty) {
-      return '';
-    }
-
-    final response = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .maybeSingle();
-
-    if (response == null) {
-      return '';
-    }
-
-    return response['id']?.toString() ?? '';
   }
 
   Future<List<BookingModel>> fetchUserBookings() async {
@@ -103,6 +114,80 @@ class BookingService {
     } catch (error) {
       debugPrint('Fetch booking history error: $error');
       return [];
+    }
+  }
+
+  Future<int> countUserBookings() async {
+    try {
+      final bookings = await fetchUserBookings();
+      return bookings.length;
+    } catch (error) {
+      debugPrint('Count user bookings error: $error');
+      return 0;
+    }
+  }
+
+  Future<int> countActiveBookings() async {
+    try {
+      final bookings = await fetchUserBookings();
+
+      return bookings.where((booking) {
+        final status = booking.status.toLowerCase().trim();
+
+        return status == 'pending' ||
+            status == 'confirmed' ||
+            status == 'approved' ||
+            status == 'accepted' ||
+            status == 'paid' ||
+            status == 'lunas' ||
+            status == 'aktif';
+      }).length;
+    } catch (error) {
+      debugPrint('Count active bookings error: $error');
+      return 0;
+    }
+  }
+
+  Future<String> fetchActiveKostLocation() async {
+    try {
+      final bookings = await fetchUserBookings();
+
+      final activeBookings = bookings.where((booking) {
+        final status = booking.status.toLowerCase().trim();
+
+        return status == 'pending' ||
+            status == 'confirmed' ||
+            status == 'approved' ||
+            status == 'accepted' ||
+            status == 'paid' ||
+            status == 'lunas' ||
+            status == 'aktif';
+      }).toList();
+
+      if (activeBookings.isEmpty) {
+        return '-';
+      }
+
+      final booking = activeBookings.first;
+
+      if (booking.kostId.trim().isEmpty) {
+        return '-';
+      }
+
+      final kostResponse = await supabase
+          .from('kosts')
+          .select('lokasi')
+          .eq('id', booking.kostId)
+          .maybeSingle();
+
+      if (kostResponse == null) {
+        return '-';
+      }
+
+      return kostResponse['lokasi']?.toString() ?? '-';
+    } catch (error) {
+      debugPrint('Fetch active kost location error: $error');
+      return '-';
     }
   }
 
