@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../models/kost.dart';
 import '../../../models/booking.dart';
 import '../../../services/booking_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
-import '../profile/profile_screen.dart';
 import '../kost/daftarkost.dart';
 import '../kost/kost_detail.dart';
+import '../profile/profile_screen.dart';
+import '../booking/booking_success.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -19,7 +21,7 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   final BookingService bookingService = BookingService();
 
-  late Future<List<BookingHistoryModel>> historyFuture;
+  late Future<List<Booking>> historyFuture;
 
   int selectedNavIndex = 2;
 
@@ -29,16 +31,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
     historyFuture = fetchHistory();
   }
 
-  Future<List<BookingHistoryModel>> fetchHistory() async {
-    return await bookingService.fetchUserBookingHistory();
+  Future<List<Booking>> fetchHistory() {
+    return bookingService.getCurrentUserBookings();
   }
 
   Future<void> refreshData() async {
+    final newFuture = fetchHistory();
+
     setState(() {
-      historyFuture = fetchHistory();
+      historyFuture = newFuture;
     });
 
-    await historyFuture;
+    await newFuture;
   }
 
   @override
@@ -46,7 +50,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return MediaQuery(
       data: MediaQuery.of(
         context,
-      ).copyWith(textScaler: const TextScaler.linear(1.0)),
+      ).copyWith(
+        textScaler: const TextScaler.linear(1),
+      ),
       child: Scaffold(
         backgroundColor: ThemeApp.primaryDark,
         body: Column(
@@ -56,14 +62,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
               child: Container(
                 width: double.infinity,
                 decoration: ThemeApp.backgroundGradient,
-                child: FutureBuilder<List<BookingHistoryModel>>(
+                child: FutureBuilder<List<Booking>>(
                   future: historyFuture,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                    if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
                       return const Center(
                         child: CircularProgressIndicator(
                           color: ThemeApp.buttonColor,
                         ),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return buildErrorHistory(
+                        getErrorMessage(snapshot.error),
                       );
                     }
 
@@ -77,14 +90,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       color: ThemeApp.buttonColor,
                       onRefresh: refreshData,
                       child: ListView.separated(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(22, 22, 22, 118),
+                        physics:
+                            const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(
+                          22,
+                          22,
+                          22,
+                          118,
+                        ),
                         itemCount: histories.length,
                         separatorBuilder: (context, index) {
                           return const SizedBox(height: 18);
                         },
                         itemBuilder: (context, index) {
-                          return buildHistoryCard(histories[index]);
+                          return buildHistoryCard(
+                            histories[index],
+                          );
                         },
                       ),
                     );
@@ -105,7 +126,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 48, 18, 16),
+      padding: const EdgeInsets.fromLTRB(
+        18,
+        48,
+        18,
+        16,
+      ),
       decoration: BoxDecoration(
         color: ThemeApp.white,
         boxShadow: [
@@ -137,7 +163,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const Expanded(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: 8,
+              ),
               child: Text(
                 'Riwayat Pemesanan',
                 textAlign: TextAlign.center,
@@ -152,7 +180,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 42, height: 42),
+          const SizedBox(
+            width: 42,
+            height: 42,
+          ),
         ],
       ),
     );
@@ -164,7 +195,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       onRefresh: refreshData,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(22, 80, 22, 118),
+        padding: const EdgeInsets.fromLTRB(
+          22,
+          80,
+          22,
+          118,
+        ),
         children: [
           Container(
             width: double.infinity,
@@ -193,9 +229,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget buildHistoryCard(BookingHistoryModel item) {
+  Widget buildErrorHistory(String message) {
+    return RefreshIndicator(
+      color: ThemeApp.buttonColor,
+      onRefresh: refreshData,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          22,
+          80,
+          22,
+          118,
+        ),
+        children: [
+          Container(
+            width: double.infinity,
+            height: 330,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: ThemeApp.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                ThemeApp.softShadow(
+                  alpha: 0.07,
+                  blurRadius: 14,
+                  offset: const Offset(0, 7),
+                ),
+              ],
+            ),
+            child: EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Gagal memuat riwayat',
+              message: message,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildHistoryCard(Booking item) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
+        openBookingSuccess(item);
+      },
+      onLongPress: () {
         openDetailKost(item.kostId);
       },
       child: Container(
@@ -231,7 +310,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.kostName,
+                      item.kostName.isEmpty
+                          ? 'Kost'
+                          : item.kostName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -253,26 +334,37 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     buildInfoRow(
                       icon: Icons.location_on_outlined,
                       iconColor: ThemeApp.locationBlue,
-                      text: item.kostLocation,
+                      text: item.kostLocation.isEmpty
+                          ? '-'
+                          : item.kostLocation,
                       textColor: ThemeApp.textDark,
                     ),
                     const SizedBox(height: 7),
                     buildInfoRow(
-                      icon: Icons.check_circle_rounded,
-                      iconColor: getStatusColor(item.status),
-                      text: getStatusLabel(item.status),
-                      textColor: getStatusColor(item.status),
-                    ),
-                    const SizedBox(height: 7),
-                    GestureDetector(
-                      onTap: showReviewInfo,
-                      child: buildInfoRow(
-                        icon: Icons.chat_rounded,
-                        iconColor: ThemeApp.locationBlue,
-                        text: 'Tulis Ulasan',
-                        textColor: ThemeApp.locationBlue,
+                      icon: getStatusIcon(
+                        item.normalizedStatus,
+                      ),
+                      iconColor: getStatusColor(
+                        item.normalizedStatus,
+                      ),
+                      text: item.statusLabel,
+                      textColor: getStatusColor(
+                        item.normalizedStatus,
                       ),
                     ),
+                    if (item.canReview) ...[
+                      const SizedBox(height: 7),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: showReviewInfo,
+                        child: buildInfoRow(
+                          icon: Icons.chat_rounded,
+                          iconColor: ThemeApp.locationBlue,
+                          text: 'Tulis Ulasan',
+                          textColor: ThemeApp.locationBlue,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -291,7 +383,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }) {
     return Row(
       children: [
-        Icon(icon, color: iconColor, size: 20),
+        Icon(
+          icon,
+          color: iconColor,
+          size: 20,
+        ),
         const SizedBox(width: 11),
         Expanded(
           child: Text(
@@ -316,7 +412,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     required double height,
   }) {
     if (imageUrl.trim().isEmpty) {
-      return buildImagePlaceholder(width: width, height: height);
+      return buildImagePlaceholder(
+        width: width,
+        height: height,
+      );
     }
 
     return Image.network(
@@ -325,7 +424,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       height: height,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
-        return buildImagePlaceholder(width: width, height: height);
+        return buildImagePlaceholder(
+          width: width,
+          height: height,
+        );
       },
       loadingBuilder: (context, child, progress) {
         if (progress == null) {
@@ -365,80 +467,102 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  String formatShortDate(String value) {
-    if (value.trim().isEmpty) {
-      return '-';
-    }
+  String formatShortDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
 
-    try {
-      final date = DateTime.parse(value);
-      final months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'Mei',
-        'Jun',
-        'Jul',
-        'Agu',
-        'Sep',
-        'Okt',
-        'Nov',
-        'Des',
-      ];
-
-      return '${date.day} ${months[date.month - 1]} ${date.year}';
-    } catch (_) {
-      return value;
-    }
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  String getStatusLabel(String status) {
-    final normalized = status.toLowerCase().trim();
+  IconData getStatusIcon(String status) {
+    switch (status) {
+      case Booking.confirmed:
+      case Booking.completed:
+        return Icons.check_circle_rounded;
 
-    if (normalized == 'selesai' ||
-        normalized == 'success' ||
-        normalized == 'approved' ||
-        normalized == 'accepted' ||
-        normalized == 'confirmed' ||
-        normalized == 'paid' ||
-        normalized == 'lunas') {
-      return 'Selesai';
+      case Booking.rejected:
+      case Booking.cancelled:
+        return Icons.cancel_rounded;
+
+      case Booking.waitingVerification:
+        return Icons.hourglass_top_rounded;
+
+      default:
+        return Icons.access_time_filled_rounded;
     }
-
-    if (normalized == 'cancelled' ||
-        normalized == 'canceled' ||
-        normalized == 'rejected' ||
-        normalized == 'batal' ||
-        normalized == 'ditolak') {
-      return 'Dibatalkan';
-    }
-
-    return 'Menunggu';
   }
 
   Color getStatusColor(String status) {
-    final normalized = status.toLowerCase().trim();
+    switch (status) {
+      case Booking.confirmed:
+      case Booking.completed:
+        return ThemeApp.successGreen;
 
-    if (normalized == 'selesai' ||
-        normalized == 'success' ||
-        normalized == 'approved' ||
-        normalized == 'accepted' ||
-        normalized == 'confirmed' ||
-        normalized == 'paid' ||
-        normalized == 'lunas') {
-      return ThemeApp.successGreen;
+      case Booking.rejected:
+      case Booking.cancelled:
+        return ThemeApp.cancelledRed;
+
+      default:
+        return ThemeApp.pendingOrange;
+    }
+  }
+
+  String getErrorMessage(Object? error) {
+    final message = error?.toString() ?? '';
+
+    if (message.startsWith('Exception: ')) {
+      return message.replaceFirst(
+        'Exception: ',
+        '',
+      );
     }
 
-    if (normalized == 'cancelled' ||
-        normalized == 'canceled' ||
-        normalized == 'rejected' ||
-        normalized == 'batal' ||
-        normalized == 'ditolak') {
-      return ThemeApp.cancelledRed;
+    if (message.trim().isEmpty) {
+      return 'Terjadi kesalahan saat mengambil riwayat pemesanan.';
     }
 
-    return ThemeApp.pendingOrange;
+    return message;
+  }
+
+  void openBookingSuccess(Booking booking) {
+    final kost = KostModel(
+      id: booking.kostId,
+      name: booking.kostName.isEmpty
+          ? 'Kost'
+          : booking.kostName,
+      location: booking.kostLocation.isEmpty
+          ? 'Lokasi belum tersedia'
+          : booking.kostLocation,
+      price: booking.kostPrice,
+      rating: 0,
+      available: 0,
+      description: '',
+      imageUrl: booking.kostImageUrl,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) {
+          return BookingSuccessScreen(
+            booking: booking,
+            kost: kost,
+          );
+        },
+      ),
+    );
   }
 
   void openDetailKost(String kostId) {
@@ -448,7 +572,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => DetailKostScreen(kostId: kostId)),
+      MaterialPageRoute(
+        builder: (_) {
+          return DetailKostScreen(
+            kostId: kostId,
+          );
+        },
+      ),
     );
   }
 
@@ -458,14 +588,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
 
     if (index == 0) {
-      Navigator.popUntil(context, (route) => route.isFirst);
+      Navigator.popUntil(
+        context,
+        (route) => route.isFirst,
+      );
       return;
     }
 
     if (index == 1) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const CariKostScreen()),
+        MaterialPageRoute(
+          builder: (_) => const CariKostScreen(),
+        ),
       );
       return;
     }
@@ -473,9 +608,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (index == 3) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ProfileScreen()),
+        MaterialPageRoute(
+          builder: (_) => const ProfileScreen(),
+        ),
       );
-      return;
     }
   }
 

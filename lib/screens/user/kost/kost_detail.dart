@@ -7,6 +7,7 @@ import '../../../services/kost_service.dart';
 import '../../../services/wishlist_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
+import '../booking/booking_screen.dart';
 import '../history/history_screen.dart';
 import '../profile/profile_screen.dart';
 import 'daftarkost.dart';
@@ -59,15 +60,19 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
   }
 
   Future<void> loadWishlistStatus() async {
-    final result = await wishlistService.isWishlisted(widget.kostId);
+    try {
+      final result = await wishlistService.isWishlisted(widget.kostId);
 
-    if (!mounted) {
-      return;
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isWishlisted = result;
+      });
+    } catch (error) {
+      debugPrint('Load wishlist status error: $error');
     }
-
-    setState(() {
-      isWishlisted = result;
-    });
   }
 
   Future<void> toggleWishlist() async {
@@ -79,13 +84,54 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
       isWishlistLoading = true;
     });
 
-    final success = await wishlistService.toggleWishlist(widget.kostId);
+    try {
+      final success = await wishlistService.toggleWishlist(widget.kostId);
 
-    if (!mounted) {
-      return;
-    }
+      if (!mounted) {
+        return;
+      }
 
-    if (!success) {
+      if (!success) {
+        setState(() {
+          isWishlistLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal memperbarui wishlist'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+
+        return;
+      }
+
+      final newStatus = await wishlistService.isWishlisted(widget.kostId);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isWishlisted = newStatus;
+        isWishlistLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newStatus
+                ? 'Kost berhasil ditambahkan ke wishlist'
+                : 'Kost dihapus dari wishlist',
+          ),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         isWishlistLoading = false;
       });
@@ -96,39 +142,18 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
           duration: Duration(seconds: 1),
         ),
       );
-
-      return;
     }
-
-    final newStatus = await wishlistService.isWishlisted(widget.kostId);
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      isWishlisted = newStatus;
-      isWishlistLoading = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          newStatus
-              ? 'Kost berhasil ditambahkan ke wishlist'
-              : 'Kost dihapus dari wishlist',
-        ),
-        duration: const Duration(seconds: 1),
-      ),
-    );
   }
 
   Future<void> refreshData() async {
+    final newFuture = fetchDetailData();
+
     setState(() {
-      detailFuture = fetchDetailData();
+      currentImageIndex = 0;
+      detailFuture = newFuture;
     });
 
-    await Future.wait([detailFuture, loadWishlistStatus()]);
+    await Future.wait([newFuture, loadWishlistStatus()]);
   }
 
   @override
@@ -136,7 +161,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
     return MediaQuery(
       data: MediaQuery.of(
         context,
-      ).copyWith(textScaler: const TextScaler.linear(1.0)),
+      ).copyWith(textScaler: const TextScaler.linear(1)),
       child: Scaffold(
         backgroundColor: ThemeApp.primaryDark,
         body: Container(
@@ -206,45 +231,47 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
       height: 365,
       child: Stack(
         children: [
-          PageView.builder(
-            itemCount: images.isEmpty ? 1 : images.length,
-            onPageChanged: (index) {
-              setState(() {
-                currentImageIndex = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              if (images.isEmpty) {
-                return buildImagePlaceholder();
-              }
-
-              return Image.network(
-                images[index],
-                width: double.infinity,
-                height: 365,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
+          Positioned.fill(
+            child: PageView.builder(
+              itemCount: images.isEmpty ? 1 : images.length,
+              onPageChanged: (index) {
+                setState(() {
+                  currentImageIndex = index;
+                });
+              },
+              itemBuilder: (context, index) {
+                if (images.isEmpty) {
                   return buildImagePlaceholder();
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) {
-                    return child;
-                  }
+                }
 
-                  return Container(
-                    width: double.infinity,
-                    height: 365,
-                    color: ThemeApp.softBackground,
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: ThemeApp.buttonColor,
-                        strokeWidth: 2,
+                return Image.network(
+                  images[index],
+                  width: double.infinity,
+                  height: 365,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return buildImagePlaceholder();
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) {
+                      return child;
+                    }
+
+                    return Container(
+                      width: double.infinity,
+                      height: 365,
+                      color: ThemeApp.softBackground,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: ThemeApp.buttonColor,
+                          strokeWidth: 2,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              );
-            },
+                    );
+                  },
+                );
+              },
+            ),
           ),
           Positioned(
             top: 44,
@@ -254,14 +281,6 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
               onTap: () {
                 Navigator.pop(context);
               },
-            ),
-          ),
-          Positioned(
-            top: 44,
-            right: 24,
-            child: buildCircleButton(
-              icon: Icons.share_rounded,
-              onTap: showShareInfo,
             ),
           ),
           if (images.length > 1)
@@ -299,20 +318,20 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        width: 54,
-        height: 54,
+        width: 45,
+        height: 45,
         decoration: BoxDecoration(
           color: ThemeApp.white.withValues(alpha: 0.94),
           shape: BoxShape.circle,
           boxShadow: [
             ThemeApp.softShadow(
               alpha: 0.10,
-              blurRadius: 10,
-              offset: const Offset(0, 5),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Icon(icon, color: ThemeApp.buttonColor, size: 28),
+        child: Icon(icon, color: ThemeApp.buttonColor, size: 22),
       ),
     );
   }
@@ -375,7 +394,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
           const SizedBox(height: 16),
           buildDistanceInformation(),
           const SizedBox(height: 36),
-          buildBookingButton(kost),
+          buildBookingButton(kost, data.images),
         ],
       ),
     );
@@ -698,30 +717,37 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
     );
   }
 
-  Widget buildBookingButton(KostModel kost) {
+  Widget buildBookingButton(KostModel kost, List<String> images) {
+    final isAvailable = kost.available > 0;
+
     return SizedBox(
       width: double.infinity,
       height: 62,
       child: ElevatedButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Booking ${kost.name} belum disambungkan'),
-              duration: const Duration(seconds: 1),
-            ),
-          );
-        },
+        onPressed: isAvailable
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) {
+                      return BookingScreen(kost: kost, images: images);
+                    },
+                  ),
+                );
+              }
+            : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: ThemeApp.buttonColor,
           foregroundColor: ThemeApp.white,
+          disabledBackgroundColor: ThemeApp.textGrey,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(34),
           ),
         ),
-        child: const Text(
-          'Pesan Kost',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        child: Text(
+          isAvailable ? 'Pesan Kost' : 'Kamar Penuh',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
       ),
     );
@@ -759,17 +785,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
         context,
         MaterialPageRoute(builder: (_) => const ProfileScreen()),
       );
-      return;
     }
-  }
-
-  void showShareInfo() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fitur share belum disambungkan'),
-        duration: Duration(seconds: 1),
-      ),
-    );
   }
 
   static String formatRupiah(int value) {
@@ -786,6 +802,7 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
     }
 
     final result = buffer.toString().split('').reversed.join();
+
     return 'Rp $result';
   }
 

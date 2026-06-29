@@ -1,223 +1,225 @@
-import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/booking.dart';
 
 class BookingService {
-  final SupabaseClient supabase = Supabase.instance.client;
+  final SupabaseClient _supabase;
 
-  Future<String> getCurrentUserId() async {
-    try {
-      final authUser = supabase.auth.currentUser;
+  static const String _bookingWithKostSelect = '''
+    id,
+    user_id,
+    kost_id,
+    booking_date,
+    start_date,
+    end_date,
+    total_price,
+    status,
+    kost:kosts (
+      nama_kost,
+      lokasi,
+      harga,
+      images:kost_images (
+        image_url
+      )
+    )
+  ''';
 
-      if (authUser == null) {
-        return '';
-      }
+  BookingService({SupabaseClient? supabase})
+      : _supabase = supabase ?? Supabase.instance.client;
 
-      final email = authUser.email?.trim().toLowerCase() ?? '';
+  String get currentUserId {
+    final user = _supabase.auth.currentUser;
 
-      if (email.isEmpty) {
-        return '';
-      }
-
-      Map<String, dynamic>? response = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', authUser.id)
-          .maybeSingle();
-
-      response ??= await supabase
-          .from('users')
-          .select('id')
-          .ilike('email', email)
-          .maybeSingle();
-
-      if (response == null) {
-        return '';
-      }
-
-      return response['id']?.toString() ?? '';
-    } catch (error) {
-      debugPrint('Get current user id error: $error');
-      return '';
+    if (user == null) {
+      throw Exception('Pengguna belum login');
     }
+
+    return user.id;
   }
 
-  Future<List<BookingModel>> fetchUserBookings() async {
-    try {
-      final userId = await getCurrentUserId();
+  Future<Booking> createBooking({
+    required String kostId,
+    required DateTime startDate,
+  }) async {
+    final userId = currentUserId;
 
-      if (userId.trim().isEmpty) {
-        return [];
-      }
-
-      final response = await supabase
-          .from('bookings')
-          .select()
-          .eq('user_id', userId)
-          .order('booking_date', ascending: false);
-
-      return List<Map<String, dynamic>>.from(
-        response.map((item) => Map<String, dynamic>.from(item)),
-      ).map((item) {
-        return BookingModel.fromMap(item);
-      }).toList();
-    } catch (error) {
-      debugPrint('Fetch user bookings error: $error');
-      return [];
-    }
-  }
-
-  Future<List<BookingHistoryModel>> fetchUserBookingHistory() async {
-    try {
-      final bookings = await fetchUserBookings();
-      final List<BookingHistoryModel> result = [];
-
-      for (final booking in bookings) {
-        if (booking.kostId.trim().isEmpty) {
-          continue;
-        }
-
-        final kostResponse = await supabase
+    final kostData =
+        await _supabase
             .from('kosts')
-            .select('id, nama_kost, lokasi')
-            .eq('id', booking.kostId)
+            .select('id, harga, tersedia')
+            .eq('id', kostId)
             .maybeSingle();
 
-        if (kostResponse == null) {
-          continue;
-        }
-
-        String imageUrl = '';
-
-        final imageResponse = await supabase
-            .from('kost_images')
-            .select('image_url')
-            .eq('kost_id', booking.kostId)
-            .limit(1);
-
-        if (imageResponse.isNotEmpty) {
-          imageUrl = imageResponse.first['image_url']?.toString() ?? '';
-        }
-
-        result.add(
-          BookingHistoryModel(
-            booking: booking,
-            kostName: kostResponse['nama_kost']?.toString() ?? 'Nama kost',
-            kostLocation: kostResponse['lokasi']?.toString() ?? '-',
-            kostImageUrl: imageUrl,
-          ),
-        );
-      }
-
-      return result;
-    } catch (error) {
-      debugPrint('Fetch booking history error: $error');
-      return [];
+    if (kostData == null) {
+      throw Exception('Data kost tidak ditemukan');
     }
+
+    final tersedia = _parseInt(kostData['tersedia']);
+    final harga = _parseInt(kostData['harga']);
+
+    if (tersedia <= 0) {
+      throw Exception('Kamar kost sudah tidak tersedia');
+    }
+
+    if (harga <= 0) {
+      throw Exception('Harga kost tidak valid');
+    }
+
+    final existingBookings = await _supabase
+        .from('bookings')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('kost_id', kostId)
+        .inFilter('status', [
+          Booking.pendingPayment,
+          Booking.waitingVerification,
+          Booking.confirmed,
+        ])
+        .limit(1);
+
+    if (existingBookings.isNotEmpty) {
+      throw Exception(
+        'Kamu masih memiliki pemesanan aktif pada kost ini',
+      );
+    }
+
+    final platformFee = Booking.calculatePlatformFee(harga);
+    final totalPrice = harga + platformFee;
+
+    final booking = Booking(
+      userId: userId,
+      kostId: kostId,
+      startDate: startDate,
+      endDate: Booking.calculateEndDate(startDate),
+      kostPrice: harga,
+      totalPrice: totalPrice,
+      status: Booking.pendingPayment,
+    );
+
+    final data =
+        await _supabase
+            .from('bookings')
+            .insert(booking.toInsertMap())
+            .select(_bookingWithKostSelect)
+            .single();
+
+    return Booking.fromMap(
+      Map<String, dynamic>.from(data),
+    );
   }
 
-  Future<int> countUserBookings() async {
-    try {
-      final bookings = await fetchUserBookings();
-      return bookings.length;
-    } catch (error) {
-      debugPrint('Count user bookings error: $error');
-      return 0;
-    }
+  Future<List<Booking>> getCurrentUserBookings() async {
+    final data = await _supabase
+        .from('bookings')
+        .select(_bookingWithKostSelect)
+        .eq('user_id', currentUserId)
+        .order('booking_date', ascending: false);
+
+    return data.map((item) {
+      return Booking.fromMap(
+        Map<String, dynamic>.from(item),
+      );
+    }).toList();
   }
 
-  Future<int> countActiveBookings() async {
-    try {
-      final bookings = await fetchUserBookings();
+  Future<Booking?> getBookingById(String bookingId) async {
+    final data =
+        await _supabase
+            .from('bookings')
+            .select(_bookingWithKostSelect)
+            .eq('id', bookingId)
+            .eq('user_id', currentUserId)
+            .maybeSingle();
 
-      return bookings.where((booking) {
-        final status = booking.status.toLowerCase().trim();
-
-        return status == 'pending' ||
-            status == 'confirmed' ||
-            status == 'approved' ||
-            status == 'accepted' ||
-            status == 'paid' ||
-            status == 'lunas' ||
-            status == 'aktif';
-      }).length;
-    } catch (error) {
-      debugPrint('Count active bookings error: $error');
-      return 0;
+    if (data == null) {
+      return null;
     }
+
+    return Booking.fromMap(
+      Map<String, dynamic>.from(data),
+    );
   }
 
-  Future<String> fetchActiveKostLocation() async {
-    try {
-      final bookings = await fetchUserBookings();
+  Future<bool> hasActiveBooking(String kostId) async {
+    final data = await _supabase
+        .from('bookings')
+        .select('id')
+        .eq('user_id', currentUserId)
+        .eq('kost_id', kostId)
+        .inFilter('status', [
+          Booking.pendingPayment,
+          Booking.waitingVerification,
+          Booking.confirmed,
+        ])
+        .limit(1);
 
-      final activeBookings = bookings.where((booking) {
-        final status = booking.status.toLowerCase().trim();
-
-        return status == 'pending' ||
-            status == 'confirmed' ||
-            status == 'approved' ||
-            status == 'accepted' ||
-            status == 'paid' ||
-            status == 'lunas' ||
-            status == 'aktif';
-      }).toList();
-
-      if (activeBookings.isEmpty) {
-        return '-';
-      }
-
-      final booking = activeBookings.first;
-
-      if (booking.kostId.trim().isEmpty) {
-        return '-';
-      }
-
-      final kostResponse = await supabase
-          .from('kosts')
-          .select('lokasi')
-          .eq('id', booking.kostId)
-          .maybeSingle();
-
-      if (kostResponse == null) {
-        return '-';
-      }
-
-      return kostResponse['lokasi']?.toString() ?? '-';
-    } catch (error) {
-      debugPrint('Fetch active kost location error: $error');
-      return '-';
-    }
+    return data.isNotEmpty;
   }
 
-  Future<bool> createBooking({
-    required String kostId,
-    required String startDate,
-    required String endDate,
-    required int totalPrice,
+  Future<void> updateBookingStatus({
+    required String bookingId,
+    required String status,
   }) async {
-    try {
-      final userId = await getCurrentUserId();
+    const allowedStatuses = [
+      Booking.pendingPayment,
+      Booking.waitingVerification,
+      Booking.confirmed,
+      Booking.rejected,
+      Booking.cancelled,
+      Booking.completed,
+    ];
 
-      if (userId.trim().isEmpty || kostId.trim().isEmpty) {
-        return false;
-      }
-
-      await supabase.from('bookings').insert({
-        'user_id': userId,
-        'kost_id': kostId,
-        'booking_date': DateTime.now().toIso8601String().split('T').first,
-        'start_date': startDate,
-        'end_date': endDate,
-        'total_price': totalPrice,
-        'status': 'pending',
-      });
-
-      return true;
-    } catch (error) {
-      debugPrint('Create booking error: $error');
-      return false;
+    if (!allowedStatuses.contains(status)) {
+      throw Exception('Status booking tidak valid');
     }
+
+    await _supabase
+        .from('bookings')
+        .update({
+          'status': status,
+        })
+        .eq('id', bookingId);
+  }
+
+  Future<void> cancelBooking(String bookingId) async {
+    await _supabase
+        .from('bookings')
+        .update({
+          'status': Booking.cancelled,
+        })
+        .eq('id', bookingId)
+        .eq('user_id', currentUserId)
+        .eq('status', Booking.pendingPayment);
+  }
+
+  Future<int> getAvailableRooms(String kostId) async {
+    final data =
+        await _supabase
+            .from('kosts')
+            .select('tersedia')
+            .eq('id', kostId)
+            .maybeSingle();
+
+    if (data == null) {
+      throw Exception('Data kost tidak ditemukan');
+    }
+
+    return _parseInt(data['tersedia']);
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value == null) {
+      return 0;
+    }
+
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return int.tryParse(value.toString()) ?? 0;
   }
 }

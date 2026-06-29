@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../models/booking.dart';
 import '../../../models/user.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/booking_service.dart';
@@ -37,29 +38,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<_ProfileData> fetchProfileData() async {
-    final results = await Future.wait([
+    final results = await Future.wait<Object>([
       authService.fetchCurrentUser(),
-      bookingService.countActiveBookings(),
-      bookingService.countUserBookings(),
-      bookingService.fetchActiveKostLocation(),
+      bookingService.getCurrentUserBookings(),
       wishlistService.countWishlist(),
     ]);
 
+    final user = results[0] as UserModel;
+    final bookings = results[1] as List<Booking>;
+    final totalWishlist = results[2] as int;
+
+    final activeBookings = bookings.where((booking) {
+      return booking.normalizedStatus == Booking.confirmed;
+    }).toList();
+
+    String activeKostLocation = 'Belum ada kost aktif';
+
+    if (activeBookings.isNotEmpty) {
+      final location = activeBookings.first.kostLocation.trim();
+
+      if (location.isNotEmpty) {
+        activeKostLocation = location;
+      }
+    }
+
     return _ProfileData(
-      user: results[0] as UserModel,
-      activeKost: results[1] as int,
-      totalHistory: results[2] as int,
-      activeKostLocation: results[3] as String,
-      totalWishlist: results[4] as int,
+      user: user,
+      activeKost: activeBookings.length,
+      totalHistory: bookings.length,
+      activeKostLocation: activeKostLocation,
+      totalWishlist: totalWishlist,
     );
   }
 
   Future<void> refreshData() async {
+    final newFuture = fetchProfileData();
+
     setState(() {
-      profileFuture = fetchProfileData();
+      profileFuture = newFuture;
     });
 
-    await profileFuture;
+    await newFuture;
   }
 
   Future<void> logout() async {
@@ -153,7 +172,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            error.toString().replaceAll('Exception: ', ''),
+            getErrorMessage(error),
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -165,7 +184,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(
-        textScaler: const TextScaler.linear(1.0),
+        textScaler: const TextScaler.linear(1),
       ),
       child: Scaffold(
         backgroundColor: ThemeApp.primaryDark,
@@ -179,11 +198,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: FutureBuilder<_ProfileData>(
                   future: profileFuture,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
+                    if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
                       return const Center(
                         child: CircularProgressIndicator(
                           color: ThemeApp.buttonColor,
                         ),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return buildErrorProfile(
+                        getErrorMessage(snapshot.error),
                       );
                     }
 
@@ -301,6 +327,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget buildErrorProfile(String message) {
+    return RefreshIndicator(
+      color: ThemeApp.buttonColor,
+      onRefresh: refreshData,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(22, 80, 22, 118),
+        children: [
+          Container(
+            width: double.infinity,
+            height: 330,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: ThemeApp.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                ThemeApp.softShadow(
+                  alpha: 0.07,
+                  blurRadius: 14,
+                  offset: const Offset(0, 7),
+                ),
+              ],
+            ),
+            child: EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Gagal memuat profil',
+              message: message,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget buildProfileContent(_ProfileData data) {
     return RefreshIndicator(
       color: ThemeApp.buttonColor,
@@ -356,7 +416,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 6),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 7,
+            ),
             decoration: BoxDecoration(
               color: ThemeApp.primaryLight.withValues(alpha: 0.20),
               borderRadius: BorderRadius.circular(20),
@@ -461,7 +524,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget buildActivitySummary(_ProfileData data) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 18,
+      ),
       decoration: BoxDecoration(
         color: ThemeApp.white,
         borderRadius: BorderRadius.circular(24),
@@ -549,7 +615,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget buildInformationCard(_ProfileData data) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: ThemeApp.white,
         borderRadius: BorderRadius.circular(24),
@@ -613,14 +679,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         bottom: isLast ? 0 : 14,
       ),
       decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : const Border(
-                bottom: BorderSide(
-                  color: Color(0xFFEDEDED),
-                  width: 1,
+        border:
+            isLast
+                ? null
+                : const Border(
+                  bottom: BorderSide(
+                    color: Color(0xFFEDEDED),
+                    width: 1,
+                  ),
                 ),
-              ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,16 +791,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 15,
+          ),
           decoration: BoxDecoration(
-            border: isLast
-                ? null
-                : const Border(
-                    bottom: BorderSide(
-                      color: Color(0xFFEDEDED),
-                      width: 1,
+            border:
+                isLast
+                    ? null
+                    : const Border(
+                      bottom: BorderSide(
+                        color: Color(0xFFEDEDED),
+                        width: 1,
+                      ),
                     ),
-                  ),
           ),
           child: Row(
             children: [
@@ -780,24 +851,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             borderRadius: BorderRadius.circular(28),
           ),
         ),
-        child: isLoggingOut
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  color: ThemeApp.white,
-                  strokeWidth: 2,
+        child:
+            isLoggingOut
+                ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    color: ThemeApp.white,
+                    strokeWidth: 2,
+                  ),
+                )
+                : const Text(
+                  'Keluar',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              )
-            : const Text(
-                'Keluar',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
       ),
     );
+  }
+
+  String getErrorMessage(Object? error) {
+    final message = error?.toString() ?? '';
+
+    if (message.startsWith('Exception: ')) {
+      return message.replaceFirst('Exception: ', '');
+    }
+
+    if (message.trim().isEmpty) {
+      return 'Terjadi kesalahan saat memuat profil.';
+    }
+
+    return message;
   }
 
   void openHistory() {
@@ -822,9 +908,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => EditProfileScreen(
-          user: user,
-        ),
+        builder: (_) {
+          return EditProfileScreen(
+            user: user,
+          );
+        },
       ),
     );
 
@@ -863,7 +951,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           builder: (_) => const HistoryScreen(),
         ),
       );
-      return;
     }
   }
 }
@@ -889,7 +976,7 @@ class _ProfileData {
       activeKost: 0,
       totalHistory: 0,
       totalWishlist: 0,
-      activeKostLocation: '-',
+      activeKostLocation: 'Belum ada kost aktif',
     );
   }
 }
