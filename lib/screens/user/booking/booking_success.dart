@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../models/booking.dart';
-import '../../../models/kost.dart';
+import '../../../models/penyewa/booking.dart';
+import '../../../models/penyewa/kost.dart';
 import '../history/history_screen.dart';
 import '../payment/payment_screen.dart';
 

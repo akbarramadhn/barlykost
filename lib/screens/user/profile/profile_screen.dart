@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../models/booking.dart';
+import '../../../models/penyewa/booking.dart';
 import '../../../models/user.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/booking_service.dart';
-import '../../../services/wishlist_service.dart';
+import '../../../services/penyewa/booking_service.dart';
+import '../../../services/penyewa/wishlist_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
 import '../../auth/login_screen.dart';

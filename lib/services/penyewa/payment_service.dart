@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../models/booking.dart';
-import '../models/payment.dart';
+import '../../models/penyewa/booking.dart';
+import '../../models/penyewa/payment.dart';
 
 class PaymentService {
   final SupabaseClient _supabase;

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../models/booking.dart';
-import '../../../models/kost.dart';
+import '../../../models/penyewa/booking.dart';
+import '../../../models/penyewa/kost.dart';
 import '../../../models/user.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/booking_service.dart';
+import '../../../services/penyewa/booking_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../history/history_screen.dart';
 import '../kost/daftarkost.dart';

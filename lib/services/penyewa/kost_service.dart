@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../models/facility.dart';
-import '../models/kost.dart';
+import '../../models/penyewa/facility.dart';
+import '../../models/penyewa/kost.dart';
 
 class KostService {
   final SupabaseClient supabase = Supabase.instance.client;

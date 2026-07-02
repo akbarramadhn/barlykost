@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../models/booking.dart';
-import '../../../models/kost.dart';
-import '../../../models/payment.dart';
-import '../../../services/payment_service.dart';
+import '../../../models/penyewa/booking.dart';
+import '../../../models/penyewa/kost.dart';
+import '../../../models/penyewa/payment.dart';
+import '../../../services/penyewa/payment_service.dart';
 import '../history/history_screen.dart';
 
 class PaymentScreen extends StatefulWidget {

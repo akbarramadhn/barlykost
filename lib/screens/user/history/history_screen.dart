@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../models/kost.dart';
-import '../../../models/booking.dart';
-import '../../../services/booking_service.dart';
+import '../../../models/penyewa/kost.dart';
+import '../../../models/penyewa/booking.dart';
+import '../../../services/penyewa/booking_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
 import '../kost/daftarkost.dart';

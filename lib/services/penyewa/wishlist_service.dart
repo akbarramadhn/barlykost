@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../models/kost.dart';
+import '../../models/penyewa/kost.dart';
 
 class WishlistService {
   final SupabaseClient supabase = Supabase.instance.client;

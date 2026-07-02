@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../models/kost.dart';
+import '../../../models/penyewa/kost.dart';
 import '../../../models/user.dart';
-import '../../../services/kost_service.dart';
+import '../../../services/penyewa/kost_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
 import '../../../widgets/kostcard.dart';

@@ -28,14 +28,26 @@ class ThemeApp {
   static const Color lightGrey = Color(0xFFDADADA);
   static const Color priceDark = Color(0xFF2D3438);
 
+  static const Color adminBackground = Color(0xFFFFFFFF);
+  static const Color adminTitle = Color(0xFF080B16);
+  static const Color adminSubtitle = Color(0xFF4B3DF4);
+  static const Color adminCardBorder = Color(0xFFE4E4E4);
+
+  static const Color adminPurple = Color(0xFF4B3DF4);
+  static const Color adminGreen = Color(0xFF2BA84A);
+  static const Color adminOrange = Color(0xFFFF8A24);
+  static const Color adminBlue = Color(0xFF315BFF);
+
+  static const Color adminSoftPurple = Color(0xFFD8CCFF);
+  static const Color adminSoftGreen = Color(0xFFD7F0D8);
+  static const Color adminSoftOrange = Color(0xFFFFE3C8);
+  static const Color adminSoftBlue = Color(0xFFD5DFFF);
+
   static const BoxDecoration backgroundGradient = BoxDecoration(
     gradient: LinearGradient(
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
-      colors: [
-        primaryDark,
-        primaryLight,
-      ],
+      colors: [primaryDark, primaryLight],
     ),
   );
 
@@ -43,10 +55,15 @@ class ThemeApp {
     gradient: LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: [
-        primaryDark,
-        primaryLight,
-      ],
+      colors: [primaryDark, primaryLight],
+    ),
+  );
+
+  static const BoxDecoration adminWelcomeGradient = BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: [primaryDark, primaryLight],
     ),
   );
 
@@ -71,10 +88,7 @@ class ThemeApp {
           fontSize: 22,
           fontWeight: FontWeight.w900,
         ),
-        iconTheme: IconThemeData(
-          color: textDark,
-          size: 28,
-        ),
+        iconTheme: IconThemeData(color: textDark, size: 28),
       ),
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
@@ -135,10 +149,7 @@ class ThemeApp {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -155,46 +166,29 @@ class ThemeApp {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: borderGrey,
-            width: 1.3,
-          ),
+          borderSide: const BorderSide(color: borderGrey, width: 1.3),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: borderGrey,
-            width: 1.3,
-          ),
+          borderSide: const BorderSide(color: borderGrey, width: 1.3),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: primaryDark,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: primaryDark, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: dangerRed,
-            width: 1.3,
-          ),
+          borderSide: const BorderSide(color: dangerRed, width: 1.3),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: dangerRed,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: dangerRed, width: 1.5),
         ),
       ),
       cardTheme: CardThemeData(
         color: white,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: buttonColor,
@@ -204,9 +198,7 @@ class ThemeApp {
           fontWeight: FontWeight.w600,
         ),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: white,

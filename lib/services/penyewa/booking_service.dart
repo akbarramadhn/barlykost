@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../models/booking.dart';
+import '../../models/penyewa/booking.dart';
 
 class BookingService {
   final SupabaseClient _supabase;

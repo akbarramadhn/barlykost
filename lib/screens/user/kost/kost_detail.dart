@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../models/facility.dart';
-import '../../../models/kost.dart';
-import '../../../services/kost_service.dart';
-import '../../../services/wishlist_service.dart';
+import '../../../models/penyewa/facility.dart';
+import '../../../models/penyewa/kost.dart';
+import '../../../services/penyewa/kost_service.dart';
+import '../../../services/penyewa/wishlist_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
 import '../booking/booking_screen.dart';

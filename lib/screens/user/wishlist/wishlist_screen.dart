@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../models/kost.dart';
-import '../../../services/wishlist_service.dart';
+import '../../../models/penyewa/kost.dart';
+import '../../../services/penyewa/wishlist_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
 import '../history/history_screen.dart';
