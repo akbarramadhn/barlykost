@@ -4,23 +4,26 @@ import '../../../core/theme/app_theme.dart';
 import '../../../models/booking.dart';
 import '../../../models/kost.dart';
 import '../history/history_screen.dart';
+import '../payment/payment_screen.dart';
 
 class BookingSuccessScreen extends StatelessWidget {
   final Booking booking;
   final KostModel kost;
+  final String selectedPaymentMethod;
 
   const BookingSuccessScreen({
     super.key,
     required this.booking,
     required this.kost,
+    required this.selectedPaymentMethod,
   });
 
   @override
   Widget build(BuildContext context) {
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        textScaler: const TextScaler.linear(1),
-      ),
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: const TextScaler.linear(1)),
       child: Scaffold(
         backgroundColor: ThemeApp.primaryDark,
         body: Container(
@@ -28,16 +31,11 @@ class BookingSuccessScreen extends StatelessWidget {
           height: double.infinity,
           decoration: ThemeApp.backgroundGradient,
           child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                24,
-                28,
-                24,
-                28,
-              ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
               child: Column(
                 children: [
-                  const Spacer(),
+                  const SizedBox(height: 18),
                   buildSuccessIcon(),
                   const SizedBox(height: 26),
                   const Text(
@@ -62,7 +60,7 @@ class BookingSuccessScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
                   buildBookingCard(),
-                  const Spacer(),
+                  const SizedBox(height: 28),
                   buildPaymentButton(context),
                   const SizedBox(height: 13),
                   buildHistoryButton(context),
@@ -108,10 +106,7 @@ class BookingSuccessScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          buildDetailRow(
-            label: 'Kost',
-            value: kost.name,
-          ),
+          buildDetailRow(label: 'Kost', value: kost.name),
           buildDivider(),
           buildDetailRow(
             label: 'Tanggal Mulai',
@@ -123,9 +118,12 @@ class BookingSuccessScreen extends StatelessWidget {
             value: formatDate(booking.endDate),
           ),
           buildDivider(),
+          buildDetailRow(label: 'Periode', value: '1 Bulan'),
+          buildDivider(),
           buildDetailRow(
-            label: 'Periode',
-            value: '1 Bulan',
+            label: 'Metode Pembayaran',
+            value: selectedPaymentMethod,
+            valueColor: ThemeApp.buttonColor,
           ),
           buildDivider(),
           buildDetailRow(
@@ -182,10 +180,7 @@ class BookingSuccessScreen extends StatelessWidget {
   Widget buildDivider() {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 14),
-      child: Divider(
-        color: ThemeApp.lightGrey,
-        height: 1,
-      ),
+      child: Divider(color: ThemeApp.lightGrey, height: 1),
     );
   }
 
@@ -195,12 +190,14 @@ class BookingSuccessScreen extends StatelessWidget {
       height: 58,
       child: ElevatedButton(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Halaman pembayaran akan disambungkan pada tahap berikutnya',
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PaymentScreen(
+                booking: booking,
+                kost: kost,
+                initialMethod: selectedPaymentMethod,
               ),
-              duration: Duration(seconds: 2),
             ),
           );
         },
@@ -214,10 +211,7 @@ class BookingSuccessScreen extends StatelessWidget {
         ),
         child: const Text(
           'Lanjut ke Pembayaran',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w900,
-          ),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
         ),
       ),
     );
@@ -231,28 +225,20 @@ class BookingSuccessScreen extends StatelessWidget {
         onPressed: () {
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(
-              builder: (_) => const HistoryScreen(),
-            ),
+            MaterialPageRoute(builder: (_) => const HistoryScreen()),
             (route) => route.isFirst,
           );
         },
         style: OutlinedButton.styleFrom(
           foregroundColor: ThemeApp.buttonColor,
-          side: const BorderSide(
-            color: ThemeApp.buttonColor,
-            width: 1.5,
-          ),
+          side: const BorderSide(color: ThemeApp.buttonColor, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30),
           ),
         ),
         child: const Text(
           'Lihat Riwayat Pemesanan',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
         ),
       ),
     );

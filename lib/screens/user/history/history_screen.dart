@@ -10,6 +10,7 @@ import '../kost/daftarkost.dart';
 import '../kost/kost_detail.dart';
 import '../profile/profile_screen.dart';
 import '../booking/booking_success.dart';
+import '../payment/payment_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -50,9 +51,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return MediaQuery(
       data: MediaQuery.of(
         context,
-      ).copyWith(
-        textScaler: const TextScaler.linear(1),
-      ),
+      ).copyWith(textScaler: const TextScaler.linear(1)),
       child: Scaffold(
         backgroundColor: ThemeApp.primaryDark,
         body: Column(
@@ -65,8 +64,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 child: FutureBuilder<List<Booking>>(
                   future: historyFuture,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
                         child: CircularProgressIndicator(
                           color: ThemeApp.buttonColor,
@@ -75,9 +73,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     }
 
                     if (snapshot.hasError) {
-                      return buildErrorHistory(
-                        getErrorMessage(snapshot.error),
-                      );
+                      return buildErrorHistory(getErrorMessage(snapshot.error));
                     }
 
                     final histories = snapshot.data ?? [];
@@ -90,22 +86,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       color: ThemeApp.buttonColor,
                       onRefresh: refreshData,
                       child: ListView.separated(
-                        physics:
-                            const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(
-                          22,
-                          22,
-                          22,
-                          118,
-                        ),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(22, 22, 22, 118),
                         itemCount: histories.length,
                         separatorBuilder: (context, index) {
                           return const SizedBox(height: 18);
                         },
                         itemBuilder: (context, index) {
-                          return buildHistoryCard(
-                            histories[index],
-                          );
+                          return buildHistoryCard(histories[index]);
                         },
                       ),
                     );
@@ -126,12 +114,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        18,
-        48,
-        18,
-        16,
-      ),
+      padding: const EdgeInsets.fromLTRB(18, 48, 18, 16),
       decoration: BoxDecoration(
         color: ThemeApp.white,
         boxShadow: [
@@ -163,9 +146,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const Expanded(
             child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: 8,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: 8),
               child: Text(
                 'Riwayat Pemesanan',
                 textAlign: TextAlign.center,
@@ -180,10 +161,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
           ),
-          const SizedBox(
-            width: 42,
-            height: 42,
-          ),
+          const SizedBox(width: 42, height: 42),
         ],
       ),
     );
@@ -195,12 +173,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       onRefresh: refreshData,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          22,
-          80,
-          22,
-          118,
-        ),
+        padding: const EdgeInsets.fromLTRB(22, 80, 22, 118),
         children: [
           Container(
             width: double.infinity,
@@ -235,12 +208,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       onRefresh: refreshData,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          22,
-          80,
-          22,
-          118,
-        ),
+        padding: const EdgeInsets.fromLTRB(22, 80, 22, 118),
         children: [
           Container(
             width: double.infinity,
@@ -310,9 +278,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.kostName.isEmpty
-                          ? 'Kost'
-                          : item.kostName,
+                      item.kostName.isEmpty ? 'Kost' : item.kostName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -334,23 +300,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     buildInfoRow(
                       icon: Icons.location_on_outlined,
                       iconColor: ThemeApp.locationBlue,
-                      text: item.kostLocation.isEmpty
-                          ? '-'
-                          : item.kostLocation,
+                      text: item.kostLocation.isEmpty ? '-' : item.kostLocation,
                       textColor: ThemeApp.textDark,
                     ),
                     const SizedBox(height: 7),
                     buildInfoRow(
-                      icon: getStatusIcon(
-                        item.normalizedStatus,
-                      ),
-                      iconColor: getStatusColor(
-                        item.normalizedStatus,
-                      ),
+                      icon: getStatusIcon(item.normalizedStatus),
+                      iconColor: getStatusColor(item.normalizedStatus),
                       text: item.statusLabel,
-                      textColor: getStatusColor(
-                        item.normalizedStatus,
-                      ),
+                      textColor: getStatusColor(item.normalizedStatus),
                     ),
                     if (item.canReview) ...[
                       const SizedBox(height: 7),
@@ -383,11 +341,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: iconColor,
-          size: 20,
-        ),
+        Icon(icon, color: iconColor, size: 20),
         const SizedBox(width: 11),
         Expanded(
           child: Text(
@@ -412,10 +366,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     required double height,
   }) {
     if (imageUrl.trim().isEmpty) {
-      return buildImagePlaceholder(
-        width: width,
-        height: height,
-      );
+      return buildImagePlaceholder(width: width, height: height);
     }
 
     return Image.network(
@@ -424,10 +375,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       height: height,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
-        return buildImagePlaceholder(
-          width: width,
-          height: height,
-        );
+        return buildImagePlaceholder(width: width, height: height);
       },
       loadingBuilder: (context, child, progress) {
         if (progress == null) {
@@ -523,10 +471,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final message = error?.toString() ?? '';
 
     if (message.startsWith('Exception: ')) {
-      return message.replaceFirst(
-        'Exception: ',
-        '',
-      );
+      return message.replaceFirst('Exception: ', '');
     }
 
     if (message.trim().isEmpty) {
@@ -539,26 +484,40 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void openBookingSuccess(Booking booking) {
     final kost = KostModel(
       id: booking.kostId,
-      name: booking.kostName.isEmpty
-          ? 'Kost'
-          : booking.kostName,
-      location: booking.kostLocation.isEmpty
-          ? 'Lokasi belum tersedia'
-          : booking.kostLocation,
+      name: booking.kostName,
+      location: booking.kostLocation,
       price: booking.kostPrice,
+      imageUrl: booking.kostImageUrl,
       rating: 0,
       available: 0,
       description: '',
-      imageUrl: booking.kostImageUrl,
     );
+
+    if (booking.canPay) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) {
+            return BookingSuccessScreen(
+              booking: booking,
+              kost: kost,
+              selectedPaymentMethod: 'Transfer Bank BCA',
+            );
+          },
+        ),
+      );
+
+      return;
+    }
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) {
-          return BookingSuccessScreen(
+          return PaymentScreen(
             booking: booking,
             kost: kost,
+            initialMethod: 'Transfer Bank BCA',
           );
         },
       ),
@@ -574,9 +533,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context,
       MaterialPageRoute(
         builder: (_) {
-          return DetailKostScreen(
-            kostId: kostId,
-          );
+          return DetailKostScreen(kostId: kostId);
         },
       ),
     );
@@ -588,19 +545,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
 
     if (index == 0) {
-      Navigator.popUntil(
-        context,
-        (route) => route.isFirst,
-      );
+      Navigator.popUntil(context, (route) => route.isFirst);
       return;
     }
 
     if (index == 1) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => const CariKostScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const CariKostScreen()),
       );
       return;
     }
@@ -608,9 +560,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (index == 3) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => const ProfileScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const ProfileScreen()),
       );
     }
   }

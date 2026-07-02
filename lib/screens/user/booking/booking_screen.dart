@@ -184,7 +184,11 @@ class _BookingScreenState extends State<BookingScreen> {
         context,
         MaterialPageRoute(
           builder: (_) {
-            return BookingSuccessScreen(booking: booking, kost: widget.kost);
+            return BookingSuccessScreen(
+              booking: booking,
+              kost: widget.kost,
+              selectedPaymentMethod: selectedPaymentMethod!,
+            );
           },
         ),
       );
