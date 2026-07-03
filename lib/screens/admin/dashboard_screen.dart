@@ -4,7 +4,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/admin/dashboard.dart';
 import '../../services/admin/dashboard_service.dart';
+import '../../widgets/adminbookcard.dart';
+import '../../widgets/adminbottomnav.dart';
+import '../../widgets/emptystate.dart';
+import '../../widgets/statisticcard.dart';
 import '../auth/login_screen.dart';
+import 'daftarkost.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -42,11 +47,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
+  }
+
+  void handleBottomNavTap(int index) {
+    if (index == 0) {
+      return;
+    }
+
+    if (index == 1) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminKostScreen()),
+      );
+      return;
+    }
+
+    if (index == 2) {
+      showMessage('Halaman pemesanan akan dibuat berikutnya');
+      return;
+    }
+
+    if (index == 3) {
+      showMessage('Halaman profil admin akan dibuat berikutnya');
+    }
   }
 
   @override
@@ -58,12 +84,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           future: dashboardFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: ThemeApp.buttonColor,
-                  strokeWidth: 2,
-                ),
-              );
+              return buildLoadingState();
             }
 
             if (snapshot.hasError) {
@@ -85,14 +106,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 26),
                     buildWelcomeCard(data),
                     const SizedBox(height: 32),
-                    const Text(
-                      'Ringkasan',
-                      style: TextStyle(
-                        color: ThemeApp.adminTitle,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                    buildSectionTitle('Ringkasan'),
                     const SizedBox(height: 16),
                     buildStatisticGrid(data),
                     const SizedBox(height: 34),
@@ -114,55 +128,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
         ),
       ),
-      bottomNavigationBar: buildAdminBottomNav(),
+      bottomNavigationBar: AdminBottomNav(
+        currentIndex: 0,
+        onTap: handleBottomNavTap,
+      ),
+    );
+  }
+
+  Widget buildLoadingState() {
+    return const Center(
+      child: CircularProgressIndicator(
+        color: ThemeApp.buttonColor,
+        strokeWidth: 2,
+      ),
     );
   }
 
   Widget buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: ThemeApp.cancelledRed,
-              size: 48,
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Dashboard gagal dimuat',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: ThemeApp.adminTitle,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Periksa koneksi atau pengaturan akses data admin.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: ThemeApp.textGrey,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: 180,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: refreshDashboard,
-                child: const Text('Coba Lagi'),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return EmptyState(
+      icon: Icons.error_outline_rounded,
+      title: 'Dashboard gagal dimuat',
+      message: 'Periksa koneksi atau pengaturan akses data admin.',
+      buttonText: 'Coba Lagi',
+      onButtonTap: refreshDashboard,
+      iconColor: ThemeApp.adminRed,
+      iconBackgroundColor: ThemeApp.adminSoftRed,
     );
   }
 
@@ -205,10 +195,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             decoration: BoxDecoration(
               color: ThemeApp.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: ThemeApp.adminCardBorder,
-                width: 1.2,
-              ),
+              border: Border.all(color: ThemeApp.adminCardBorder, width: 1.2),
             ),
             child: const Icon(
               Icons.logout_rounded,
@@ -229,10 +216,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         gradient: const LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [
-            ThemeApp.primaryDark,
-            ThemeApp.primaryLight,
-          ],
+          colors: [ThemeApp.primaryDark, ThemeApp.primaryLight],
         ),
         borderRadius: BorderRadius.circular(22),
       ),
@@ -286,133 +270,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget buildStatisticGrid(AdminDashboardData data) {
-    final stats = [
-      StatisticModel(
-        title: 'Total Kost',
-        value: data.totalKost.toString(),
-        subtitle: 'Aktif',
-        icon: Icons.apartment_rounded,
-        iconColor: ThemeApp.adminPurple,
-        iconBackground: ThemeApp.adminSoftPurple,
-      ),
-      StatisticModel(
-        title: 'Total Pesanan',
-        value: data.totalPesanan.toString(),
-        subtitle: 'Bulan ini',
-        icon: Icons.assignment_rounded,
-        iconColor: ThemeApp.adminGreen,
-        iconBackground: ThemeApp.adminSoftGreen,
-      ),
-      StatisticModel(
-        title: 'Total User',
-        value: data.totalUser.toString(),
-        subtitle: 'Aktif',
-        icon: Icons.person_outline_rounded,
-        iconColor: ThemeApp.adminOrange,
-        iconBackground: ThemeApp.adminSoftOrange,
-      ),
-      StatisticModel(
-        title: 'Pendapatan',
-        value: formatNumber(data.totalPendapatanBulanIni),
-        subtitle: 'Bulan ini',
-        icon: Icons.account_balance_wallet_rounded,
-        iconColor: ThemeApp.adminBlue,
-        iconBackground: ThemeApp.adminSoftBlue,
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const double gap = 14;
-        final double cardWidth = (constraints.maxWidth - gap) / 2;
-
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: stats.map((stat) {
-            return SizedBox(
-              width: cardWidth,
-              child: buildStatisticCard(stat),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Widget buildStatisticCard(StatisticModel stat) {
-    return Container(
-      height: 118,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ThemeApp.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: ThemeApp.adminCardBorder,
-          width: 1.2,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: stat.iconBackground,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              stat.icon,
-              color: stat.iconColor,
-              size: 29,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  stat.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: ThemeApp.adminTitle,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  stat.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF555555),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    height: 1.12,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  stat.subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: stat.iconColor,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    height: 1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+  Widget buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        color: ThemeApp.adminTitle,
+        fontSize: 22,
+        fontWeight: FontWeight.w900,
       ),
     );
   }
@@ -449,246 +313,105 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget buildStatisticGrid(AdminDashboardData data) {
+    final List<AdminStatisticSummary> stats = [
+      AdminStatisticSummary(
+        title: 'Total Kost',
+        value: data.totalKost.toString(),
+        subtitle: 'Aktif',
+        icon: Icons.apartment_rounded,
+        iconColor: ThemeApp.adminPurple,
+        iconBackground: ThemeApp.adminSoftPurple,
+      ),
+      AdminStatisticSummary(
+        title: 'Total Pesanan',
+        value: data.totalPesanan.toString(),
+        subtitle: 'Bulan ini',
+        icon: Icons.assignment_rounded,
+        iconColor: ThemeApp.adminGreen,
+        iconBackground: ThemeApp.adminSoftGreen,
+      ),
+      AdminStatisticSummary(
+        title: 'Total User',
+        value: data.totalUser.toString(),
+        subtitle: 'Aktif',
+        icon: Icons.person_outline_rounded,
+        iconColor: ThemeApp.adminOrange,
+        iconBackground: ThemeApp.adminSoftOrange,
+      ),
+      AdminStatisticSummary(
+        title: 'Pendapatan',
+        value: formatNumber(data.totalPendapatanBulanIni),
+        subtitle: 'Bulan ini',
+        icon: Icons.account_balance_wallet_rounded,
+        iconColor: ThemeApp.adminBlue,
+        iconBackground: ThemeApp.adminSoftBlue,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const double gap = 14;
+        final double cardWidth = (constraints.maxWidth - gap) / 2;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: stats.map((statistic) {
+            return SizedBox(
+              width: cardWidth,
+              child: StatisticCard(
+                title: statistic.title,
+                value: statistic.value,
+                subtitle: statistic.subtitle,
+                icon: statistic.icon,
+                color: statistic.iconColor,
+                iconBackgroundColor: statistic.iconBackground,
+                height: 118,
+                borderRadius: 18,
+                showShadow: false,
+                showBorder: true,
+                circularIcon: true,
+                iconBoxSize: 54,
+                iconSize: 29,
+                titleFontSize: 15,
+                subtitleFontSize: 15,
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
   Widget buildBookingList(List<AdminBookingSummary> bookings) {
     if (bookings.isEmpty) {
-      return buildEmptyCard(
+      return const EmptyState(
         icon: Icons.receipt_long_outlined,
-        text: 'Belum ada pesanan masuk',
+        title: 'Belum ada pesanan',
+        message: 'Pesanan terbaru akan tampil di sini.',
+        iconColor: ThemeApp.adminPurple,
+        iconBackgroundColor: ThemeApp.adminSoftPurple,
+        compact: true,
       );
     }
 
     return Column(
       children: bookings.map((booking) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 14),
-          child: buildBookingCard(booking),
+        return AdminBookingCard(
+          booking: booking,
+          margin: const EdgeInsets.only(bottom: 14),
+          onTap: () {
+            showMessage('Detail pemesanan akan dibuat berikutnya');
+          },
         );
       }).toList(),
     );
   }
 
-  Widget buildBookingCard(AdminBookingSummary booking) {
-    final style = booking.statusStyle;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 14, 16),
-      decoration: BoxDecoration(
-        color: ThemeApp.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: ThemeApp.adminCardBorder,
-          width: 1.2,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: style.softColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.person_outline_rounded,
-              color: style.textColor,
-              size: 31,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  booking.userName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: ThemeApp.adminTitle,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  booking.kostName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF555555),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  booking.bookingDateText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF555555),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            constraints: const BoxConstraints(
-              minWidth: 96,
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 9,
-            ),
-            decoration: BoxDecoration(
-              color: style.badgeColor,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              booking.statusLabel,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: style.textColor,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                height: 1.12,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: Color(0xFF9CA0A6),
-            size: 30,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget buildEmptyCard({
-    required IconData icon,
-    required String text,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: ThemeApp.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: ThemeApp.adminCardBorder,
-          width: 1.2,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: ThemeApp.buttonColor,
-            size: 27,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: ThemeApp.adminTitle,
-                fontSize: 14.5,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget buildAdminBottomNav() {
-    return Container(
-      height: 88,
-      decoration: const BoxDecoration(
-        color: ThemeApp.white,
-        border: Border(
-          top: BorderSide(
-            color: ThemeApp.adminCardBorder,
-            width: 1.2,
-          ),
-        ),
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            buildBottomNavItem(
-              icon: Icons.home_rounded,
-              isActive: true,
-              onTap: () {},
-            ),
-            buildBottomNavItem(
-              icon: Icons.apartment_rounded,
-              isActive: false,
-              onTap: () {
-                showMessage('Halaman daftar kost akan dibuat berikutnya');
-              },
-            ),
-            buildBottomNavItem(
-              icon: Icons.assignment_rounded,
-              isActive: false,
-              onTap: () {
-                showMessage('Halaman pemesanan akan dibuat berikutnya');
-              },
-            ),
-            buildBottomNavItem(
-              icon: Icons.person_rounded,
-              isActive: false,
-              onTap: () {
-                showMessage('Halaman profil admin akan dibuat berikutnya');
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildBottomNavItem({
-    required IconData icon,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        width: 64,
-        height: 56,
-        child: Icon(
-          icon,
-          color: isActive ? ThemeApp.buttonColor : const Color(0xFFD2D2D2),
-          size: 32,
-        ),
-      ),
-    );
-  }
-
   void showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ),
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
     );
   }
 
@@ -707,22 +430,4 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return buffer.toString().split('').reversed.join();
   }
-}
-
-class StatisticModel {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBackground;
-
-  const StatisticModel({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBackground,
-  });
 }

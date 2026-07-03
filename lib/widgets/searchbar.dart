@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme.dart';
+
 class SearchBarWidget extends StatelessWidget {
   final TextEditingController? controller;
   final String hintText;
@@ -12,6 +14,16 @@ class SearchBarWidget extends StatelessWidget {
   final bool showClear;
   final bool readOnly;
   final EdgeInsetsGeometry? margin;
+  final Color iconColor;
+  final Color filterColor;
+  final Color backgroundColor;
+  final Color borderColor;
+  final Color textColor;
+  final Color hintColor;
+  final double height;
+  final double borderRadius;
+  final double fontSize;
+  final bool showShadow;
 
   const SearchBarWidget({
     super.key,
@@ -26,11 +38,17 @@ class SearchBarWidget extends StatelessWidget {
     this.showClear = false,
     this.readOnly = false,
     this.margin,
+    this.iconColor = ThemeApp.primaryDark,
+    this.filterColor = ThemeApp.primaryDark,
+    this.backgroundColor = ThemeApp.white,
+    this.borderColor = ThemeApp.borderGrey,
+    this.textColor = ThemeApp.textDark,
+    this.hintColor = ThemeApp.textGrey,
+    this.height = 60,
+    this.borderRadius = 36,
+    this.fontSize = 19,
+    this.showShadow = true,
   });
-
-  static const Color primaryDark = Color(0xFF10776F);
-  static const Color textDark = Color(0xFF1E1E1E);
-  static const Color textGrey = Color(0xFF777777);
 
   @override
   Widget build(BuildContext context) {
@@ -40,29 +58,31 @@ class SearchBarWidget extends StatelessWidget {
         children: [
           Expanded(
             child: Container(
-              height: 60,
+              height: height,
               padding: const EdgeInsets.only(left: 18, right: 18),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(36),
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(borderRadius),
                 border: Border.all(
-                  color: const Color(0xFFE0E0E0),
+                  color: borderColor,
                   width: 1.5,
                 ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x12000000),
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ],
+                boxShadow: showShadow
+                    ? [
+                        ThemeApp.softShadow(
+                          alpha: 0.07,
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.search_rounded,
-                    color: primaryDark,
-                    size: 33,
+                    color: iconColor,
+                    size: height >= 56 ? 33 : 28,
                   ),
                   const SizedBox(width: 15),
                   Expanded(
@@ -73,16 +93,16 @@ class SearchBarWidget extends StatelessWidget {
                       onChanged: onChanged,
                       onSubmitted: onSubmitted,
                       textAlignVertical: TextAlignVertical.center,
-                      style: const TextStyle(
-                        color: textDark,
-                        fontSize: 19,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: fontSize,
                         fontWeight: FontWeight.w500,
                       ),
                       decoration: InputDecoration(
                         hintText: hintText,
-                        hintStyle: const TextStyle(
-                          color: textGrey,
-                          fontSize: 19,
+                        hintStyle: TextStyle(
+                          color: hintColor,
+                          fontSize: fontSize,
                           fontWeight: FontWeight.w500,
                         ),
                         border: InputBorder.none,
@@ -96,9 +116,9 @@ class SearchBarWidget extends StatelessWidget {
                   if (showClear)
                     GestureDetector(
                       onTap: onClearTap,
-                      child: const Icon(
+                      child: Icon(
                         Icons.close_rounded,
-                        color: textGrey,
+                        color: hintColor,
                         size: 24,
                       ),
                     ),
@@ -111,22 +131,24 @@ class SearchBarWidget extends StatelessWidget {
             GestureDetector(
               onTap: onFilterTap,
               child: Container(
-                width: 60,
-                height: 60,
+                width: height,
+                height: height,
                 decoration: BoxDecoration(
-                  color: primaryDark,
+                  color: filterColor,
                   borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryDark.withValues(alpha: 0.22),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
+                  boxShadow: showShadow
+                      ? [
+                          BoxShadow(
+                            color: filterColor.withValues(alpha: 0.22),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: const Icon(
                   Icons.tune_rounded,
-                  color: Colors.white,
+                  color: ThemeApp.white,
                   size: 28,
                 ),
               ),

@@ -28,7 +28,6 @@ class ThemeApp {
   static const Color lightGrey = Color(0xFFDADADA);
   static const Color priceDark = Color(0xFF2D3438);
 
-  static const Color adminBackground = Color(0xFFFFFFFF);
   static const Color adminTitle = Color(0xFF080B16);
   static const Color adminSubtitle = Color(0xFF4B3DF4);
   static const Color adminCardBorder = Color(0xFFE4E4E4);
@@ -37,11 +36,13 @@ class ThemeApp {
   static const Color adminGreen = Color(0xFF2BA84A);
   static const Color adminOrange = Color(0xFFFF8A24);
   static const Color adminBlue = Color(0xFF315BFF);
+  static const Color adminRed = Color(0xFFE54848);
 
   static const Color adminSoftPurple = Color(0xFFD8CCFF);
   static const Color adminSoftGreen = Color(0xFFD7F0D8);
   static const Color adminSoftOrange = Color(0xFFFFE3C8);
   static const Color adminSoftBlue = Color(0xFFD5DFFF);
+  static const Color adminSoftRed = Color(0xFFFFD6D6);
 
   static const BoxDecoration backgroundGradient = BoxDecoration(
     gradient: LinearGradient(

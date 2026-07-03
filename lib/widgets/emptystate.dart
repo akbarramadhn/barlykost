@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme.dart';
+
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -7,6 +9,16 @@ class EmptyState extends StatelessWidget {
   final String? buttonText;
   final VoidCallback? onButtonTap;
   final EdgeInsetsGeometry? padding;
+  final Color iconColor;
+  final Color? iconBackgroundColor;
+  final Color titleColor;
+  final Color messageColor;
+  final Color buttonColor;
+  final double iconSize;
+  final double iconBoxSize;
+  final double titleFontSize;
+  final double messageFontSize;
+  final bool compact;
 
   const EmptyState({
     super.key,
@@ -16,13 +28,17 @@ class EmptyState extends StatelessWidget {
     this.buttonText,
     this.onButtonTap,
     this.padding,
+    this.iconColor = ThemeApp.primaryDark,
+    this.iconBackgroundColor,
+    this.titleColor = ThemeApp.textDark,
+    this.messageColor = ThemeApp.textGrey,
+    this.buttonColor = ThemeApp.buttonColor,
+    this.iconSize = 42,
+    this.iconBoxSize = 86,
+    this.titleFontSize = 18,
+    this.messageFontSize = 13.5,
+    this.compact = false,
   });
-
-  static const Color primaryDark = Color(0xFF10776F);
-  static const Color primaryLight = Color(0xFF5CE7D1);
-  static const Color buttonColor = Color(0xFF003B63);
-  static const Color textDark = Color(0xFF1E1E1E);
-  static const Color textGrey = Color(0xFF777777);
 
   @override
   Widget build(BuildContext context) {
@@ -33,25 +49,26 @@ class EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 86,
-              height: 86,
+              width: compact ? iconBoxSize * 0.82 : iconBoxSize,
+              height: compact ? iconBoxSize * 0.82 : iconBoxSize,
               decoration: BoxDecoration(
-                color: primaryLight.withValues(alpha: 0.20),
+                color: iconBackgroundColor ??
+                    iconColor.withValues(alpha: 0.16),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: primaryDark,
-                size: 42,
+                color: iconColor,
+                size: compact ? iconSize * 0.84 : iconSize,
               ),
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: compact ? 12 : 18),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: textDark,
-                fontSize: 18,
+              style: TextStyle(
+                color: titleColor,
+                fontSize: compact ? titleFontSize - 1 : titleFontSize,
                 fontWeight: FontWeight.w900,
                 height: 1.25,
               ),
@@ -60,22 +77,22 @@ class EmptyState extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: textGrey,
-                fontSize: 13.5,
+              style: TextStyle(
+                color: messageColor,
+                fontSize: compact ? messageFontSize - 0.5 : messageFontSize,
                 fontWeight: FontWeight.w500,
                 height: 1.45,
               ),
             ),
             if (buttonText != null && buttonText!.trim().isNotEmpty) ...[
-              const SizedBox(height: 20),
+              SizedBox(height: compact ? 16 : 20),
               SizedBox(
-                height: 46,
+                height: compact ? 42 : 46,
                 child: ElevatedButton(
                   onPressed: onButtonTap,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: buttonColor,
-                    foregroundColor: Colors.white,
+                    foregroundColor: ThemeApp.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 22),
                     shape: RoundedRectangleBorder(
@@ -84,8 +101,8 @@ class EmptyState extends StatelessWidget {
                   ),
                   child: Text(
                     buttonText!,
-                    style: const TextStyle(
-                      fontSize: 13.5,
+                    style: TextStyle(
+                      fontSize: compact ? 13 : 13.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),

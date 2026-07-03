@@ -32,6 +32,24 @@ class AdminDashboardData {
   }
 }
 
+class AdminStatisticSummary {
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBackground;
+
+  const AdminStatisticSummary({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBackground,
+  });
+}
+
 class AdminProfileSummary {
   final String name;
   final String email;
@@ -159,32 +177,26 @@ class AdminBookingSummary {
       case 'pending':
       case 'menunggu':
         return 'pending_payment';
-
       case 'waiting_verification':
       case 'menunggu_verifikasi':
         return 'waiting_verification';
-
       case 'confirmed':
       case 'approved':
       case 'paid':
       case 'lunas':
         return 'confirmed';
-
       case 'completed':
       case 'success':
       case 'selesai':
         return 'completed';
-
       case 'rejected':
       case 'ditolak':
         return 'rejected';
-
       case 'cancelled':
       case 'canceled':
       case 'batal':
       case 'dibatalkan':
         return 'cancelled';
-
       default:
         return value;
     }
@@ -194,22 +206,16 @@ class AdminBookingSummary {
     switch (normalizedStatus) {
       case 'pending_payment':
         return 'Menunggu Pembayaran';
-
       case 'waiting_verification':
         return 'Menunggu Verifikasi';
-
       case 'confirmed':
         return 'Dikonfirmasi';
-
       case 'completed':
         return 'Selesai';
-
       case 'rejected':
         return 'Ditolak';
-
       case 'cancelled':
         return 'Dibatalkan';
-
       default:
         return 'Baru';
     }
@@ -224,21 +230,18 @@ class AdminBookingSummary {
           softColor: Color(0xFFFFE3C8),
           textColor: Color(0xFFB35A00),
         );
-
       case 'confirmed':
         return const AdminBookingStatusStyle(
           badgeColor: Color(0xFFD7F0D8),
           softColor: Color(0xFFD7F0D8),
           textColor: Color(0xFF2BA84A),
         );
-
       case 'completed':
         return const AdminBookingStatusStyle(
           badgeColor: Color(0xFFD5DFFF),
           softColor: Color(0xFFD5DFFF),
           textColor: Color(0xFF315BFF),
         );
-
       case 'rejected':
       case 'cancelled':
         return const AdminBookingStatusStyle(
@@ -246,7 +249,6 @@ class AdminBookingSummary {
           softColor: Color(0xFFFFD6D6),
           textColor: Color(0xFFE53935),
         );
-
       default:
         return const AdminBookingStatusStyle(
           badgeColor: Color(0xFFEAEAEA),
@@ -331,33 +333,17 @@ String formatDate(DateTime date) {
 }
 
 int _parseInt(dynamic value) {
-  if (value == null) {
-    return 0;
-  }
-
-  if (value is int) {
-    return value;
-  }
-
-  if (value is num) {
-    return value.toInt();
-  }
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
 
   return int.tryParse(value.toString()) ?? 0;
 }
 
 double _parseDouble(dynamic value) {
-  if (value == null) {
-    return 0;
-  }
-
-  if (value is double) {
-    return value;
-  }
-
-  if (value is num) {
-    return value.toDouble();
-  }
+  if (value == null) return 0;
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
 
   return double.tryParse(value.toString()) ?? 0;
 }
