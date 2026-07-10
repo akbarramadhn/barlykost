@@ -7,6 +7,8 @@ import '../../widgets/adminbottomnav.dart';
 import 'daftarkost.dart';
 import 'dashboardadmin.dart';
 import 'detailpemesanan.dart';
+import 'profile_admin.dart';
+import 'admin_notification_screen.dart';
 
 enum AdminBookingFilter { all, confirmed, waitingPayment }
 
@@ -60,12 +62,6 @@ class _AdminBookingScreenState extends State<AdminBookingScreen> {
     super.dispose();
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   void _handleBottomNavTap(int index) {
     if (index == 0) {
       Navigator.pushReplacement(
@@ -87,9 +83,10 @@ class _AdminBookingScreenState extends State<AdminBookingScreen> {
       return;
     }
 
-    if (index == 3) {
-      _showMessage('Halaman profil admin akan dibuat berikutnya');
-    }
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const AdminProfileScreen()),
+    );
   }
 
   Future<void> _refreshData() async {
@@ -169,7 +166,12 @@ class _AdminBookingScreenState extends State<AdminBookingScreen> {
           onTap:
               widget.onNotificationTap ??
               () {
-                _showMessage('Halaman notifikasi belum dibuat');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AdminNotificationScreen(),
+                  ),
+                );
               },
           borderRadius: ThemeApp.radius(22),
           child: const SizedBox(

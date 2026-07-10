@@ -13,6 +13,7 @@ import '../auth/login_screen.dart';
 import 'daftarkost.dart';
 import 'pemesanan.dart';
 import 'detailpemesanan.dart';
+import 'profile_admin.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -106,12 +107,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     if (index == 2) {
-      openBookingScreen();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminBookingScreen()),
+      );
       return;
     }
 
     if (index == 3) {
-      showMessage('Halaman profil admin akan dibuat berikutnya');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminProfileScreen()),
+      );
     }
   }
 
@@ -226,23 +233,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ],
-          ),
-        ),
-        GestureDetector(
-          onTap: logout,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: ThemeApp.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: ThemeApp.adminCardBorder, width: 1.2),
-            ),
-            child: const Icon(
-              Icons.logout_rounded,
-              color: ThemeApp.buttonColor,
-              size: 23,
-            ),
           ),
         ),
       ],

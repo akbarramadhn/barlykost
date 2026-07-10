@@ -3,8 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../models/penyewa/kost.dart';
+import '../../../models/penyewa/booking.dart';
 import '../../../models/user.dart';
 import '../../../services/penyewa/kost_service.dart';
+import '../../../services/penyewa/booking_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
 import '../../../widgets/kostcard.dart';
@@ -14,6 +16,7 @@ import '../kost/daftarkost.dart';
 import '../kost/kost_detail.dart';
 import '../profile/profile_screen.dart';
 import '../wishlist/wishlist_screen.dart';
+import '../notification/notification_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,9 +28,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final SupabaseClient supabase = Supabase.instance.client;
   final KostService kostService = KostService();
+  final BookingService bookingService = BookingService();
 
   late Future<UserModel> userFuture;
   late Future<List<KostModel>> kostFuture;
+  late Future<List<Booking>> confirmedBookingFuture;
 
   int selectedNavIndex = 0;
 
@@ -40,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     userFuture = fetchCurrentUser();
     kostFuture = fetchKosts();
+    confirmedBookingFuture = fetchConfirmedBookings();
   }
 
   Future<UserModel> fetchCurrentUser() async {
@@ -96,24 +102,39 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<List<Booking>> fetchConfirmedBookings() async {
+    try {
+      final bookings = await bookingService.getCurrentUserBookings();
+
+      return bookings.where((booking) {
+        return booking.normalizedStatus == Booking.confirmed;
+      }).toList();
+    } catch (error) {
+      debugPrint('Fetch confirmed bookings error: $error');
+      return [];
+    }
+  }
+
   Future<void> refreshData() async {
     setState(() {
       userFuture = fetchCurrentUser();
       kostFuture = fetchKosts();
+      confirmedBookingFuture = fetchConfirmedBookings();
     });
 
     await Future.wait([
       userFuture,
       kostFuture,
+      confirmedBookingFuture,
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
     return MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        textScaler: const TextScaler.linear(1.0),
-      ),
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: const TextScaler.linear(1.0)),
       child: Scaffold(
         backgroundColor: Colors.white,
         body: Container(
@@ -167,10 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            GestureDetector(
-              onTap: openProfile,
-              child: buildAvatar(user),
-            ),
+            GestureDetector(onTap: openProfile, child: buildAvatar(user)),
             const SizedBox(width: 16),
             Expanded(
               child: GestureDetector(
@@ -219,10 +237,27 @@ class _HomeScreenState extends State<HomeScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(
-                  Icons.notifications_none_rounded,
-                  color: darkTeal,
-                  size: 40,
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationScreen(),
+                      ),
+                    );
+                  },
+                  child: const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Center(
+                      child: Icon(
+                        Icons.notifications_none_rounded,
+                        color: darkTeal,
+                        size: 40,
+                      ),
+                    ),
+                  ),
                 ),
                 Positioned(
                   right: 1,
@@ -253,10 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.white,
-            width: 2,
-          ),
+          border: Border.all(color: Colors.white, width: 2),
           boxShadow: [
             ThemeApp.softShadow(
               alpha: 0.08,
@@ -311,16 +343,9 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFC8DFA4),
         shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white,
-          width: 2,
-        ),
+        border: Border.all(color: Colors.white, width: 2),
       ),
-      child: const Icon(
-        Icons.person_rounded,
-        color: darkTeal,
-        size: 50,
-      ),
+      child: const Icon(Icons.person_rounded, color: darkTeal, size: 50),
     );
   }
 
@@ -340,14 +365,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          buildCategoryItem(
-            icon: Icons.savings_outlined,
-            title: 'Termurah',
-          ),
-          buildCategoryItem(
-            icon: Icons.receipt_long_rounded,
-            title: 'Tahunan',
-          ),
+          buildCategoryItem(icon: Icons.savings_outlined, title: 'Termurah'),
+          buildCategoryItem(icon: Icons.receipt_long_rounded, title: 'Tahunan'),
           buildCategoryItem(
             icon: Icons.calendar_month_rounded,
             title: 'Bulanan',
@@ -361,10 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildCategoryItem({
-    required IconData icon,
-    required String title,
-  }) {
+  Widget buildCategoryItem({required IconData icon, required String title}) {
     return GestureDetector(
       onTap: openCariKost,
       child: SizedBox(
@@ -380,11 +396,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: softBlue,
                 borderRadius: BorderRadius.circular(22),
               ),
-              child: Icon(
-                icon,
-                color: darkTeal,
-                size: 35,
-              ),
+              child: Icon(icon, color: darkTeal, size: 35),
             ),
             const SizedBox(height: 9),
             SizedBox(
@@ -412,37 +424,64 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget buildBookingHistorySection() {
-    return FutureBuilder<List<KostModel>>(
-      future: kostFuture,
+    return FutureBuilder<List<Booking>>(
+      future: confirmedBookingFuture,
       builder: (context, snapshot) {
-        final kosts = snapshot.data ?? [];
-        final kost = kosts.isNotEmpty ? kosts.first : KostModel.empty();
+        final bookings = snapshot.data ?? [];
+        final booking = bookings.isNotEmpty ? bookings.first : null;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            buildSectionTitle('Riwayat Pemesanan'),
+            Row(
+              children: [
+                Expanded(
+                  child: buildSectionTitle('Riwayat Pemesanan'),
+                ),
+                if (bookings.isNotEmpty)
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: openHistory,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 6,
+                      ),
+                      child: Text(
+                        'Lihat Semua',
+                        style: TextStyle(
+                          color: darkTeal,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 15),
             if (snapshot.connectionState == ConnectionState.waiting)
               buildHistoryLoadingCard()
-            else if (kosts.isEmpty)
+            else if (booking == null)
               buildEmptyHistoryCard()
             else
-              buildBookingHistoryCard(kost),
+              buildBookingHistoryCard(booking),
           ],
         );
       },
     );
   }
 
-  Widget buildBookingHistoryCard(KostModel kost) {
+  Widget buildBookingHistoryCard(Booking booking) {
     return GestureDetector(
-      onTap: () {
-        openDetailKost(kost.id);
+      behavior: HitTestBehavior.opaque,
+      onTap: openHistory,
+      onLongPress: () {
+        openDetailKost(booking.kostId);
       },
       child: Container(
         width: double.infinity,
-        height: 140,
+        height: 158,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.20),
@@ -457,21 +496,22 @@ class _HomeScreenState extends State<HomeScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(13),
               child: buildKostImage(
-                imageUrl: kost.imageUrl,
+                imageUrl: booking.kostImageUrl,
                 width: 115,
-                height: 120,
+                height: 138,
               ),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 3),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      kost.name,
+                      booking.kostName.trim().isEmpty
+                          ? 'Kost'
+                          : booking.kostName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -481,13 +521,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 1.1,
                       ),
                     ),
+                    const Spacer(),
                     buildHistoryInfoRow(
                       icon: Icons.calendar_month_rounded,
-                      text: '1 Januari 2023 - 1 Januari 2026',
+                      text:
+                          '${formatShortDate(booking.startDate)} - ${formatShortDate(booking.endDate)}',
                     ),
+                    const SizedBox(height: 8),
                     buildHistoryInfoRow(
                       icon: Icons.location_on_outlined,
-                      text: kost.location,
+                      text: booking.kostLocation.trim().isEmpty
+                          ? '-'
+                          : booking.kostLocation,
+                    ),
+                    const SizedBox(height: 8),
+                    buildHistoryInfoRow(
+                      icon: Icons.check_circle_rounded,
+                      text: booking.statusLabel,
+                      iconColor: ThemeApp.successGreen,
+                      textColor: ThemeApp.successGreen,
                     ),
                   ],
                 ),
@@ -502,24 +554,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget buildHistoryInfoRow({
     required IconData icon,
     required String text,
+    Color iconColor = locationBlue,
+    Color textColor = Colors.black,
   }) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: locationBlue,
-          size: 25,
-        ),
+        Icon(icon, color: iconColor, size: 22),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
               height: 1.1,
             ),
           ),
@@ -528,10 +578,29 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  String formatShortDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
   Widget buildHistoryLoadingCard() {
     return Container(
       width: double.infinity,
-      height: 140,
+      height: 158,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(18),
@@ -541,10 +610,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: const Center(
-        child: CircularProgressIndicator(
-          color: darkTeal,
-          strokeWidth: 2,
-        ),
+        child: CircularProgressIndicator(color: darkTeal, strokeWidth: 2),
       ),
     );
   }
@@ -630,10 +696,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(22),
       ),
       child: const Center(
-        child: CircularProgressIndicator(
-          color: darkTeal,
-          strokeWidth: 2,
-        ),
+        child: CircularProgressIndicator(color: darkTeal, strokeWidth: 2),
       ),
     );
   }
@@ -661,10 +724,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required double height,
   }) {
     if (imageUrl.trim().isEmpty) {
-      return buildImagePlaceholder(
-        width: width,
-        height: height,
-      );
+      return buildImagePlaceholder(width: width, height: height);
     }
 
     return Image.network(
@@ -673,10 +733,7 @@ class _HomeScreenState extends State<HomeScreen> {
       height: height,
       fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
-        return buildImagePlaceholder(
-          width: width,
-          height: height,
-        );
+        return buildImagePlaceholder(width: width, height: height);
       },
       loadingBuilder: (context, child, progress) {
         if (progress == null) {
@@ -688,10 +745,7 @@ class _HomeScreenState extends State<HomeScreen> {
           height: height,
           color: const Color(0xFFEAF6F4),
           child: const Center(
-            child: CircularProgressIndicator(
-              color: darkTeal,
-              strokeWidth: 2,
-            ),
+            child: CircularProgressIndicator(color: darkTeal, strokeWidth: 2),
           ),
         );
       },
@@ -707,11 +761,7 @@ class _HomeScreenState extends State<HomeScreen> {
       height: height,
       color: const Color(0xFFEAF6F4),
       child: const Center(
-        child: Icon(
-          Icons.home_work_outlined,
-          color: darkTeal,
-          size: 42,
-        ),
+        child: Icon(Icons.home_work_outlined, color: darkTeal, size: 42),
       ),
     );
   }
@@ -730,9 +780,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void openCariKost() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const CariKostScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const CariKostScreen()),
     );
   }
 
@@ -743,38 +791,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => DetailKostScreen(
-          kostId: kostId,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => DetailKostScreen(kostId: kostId)),
     );
   }
 
   void openHistory() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const HistoryScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const HistoryScreen()),
     );
   }
 
   void openWishlist() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const WishlistScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const WishlistScreen()),
     );
   }
 
   Future<void> openProfile() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const ProfileScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
 
     if (!mounted) {

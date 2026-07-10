@@ -13,24 +13,18 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
   @override
   void initState() {
     super.initState();
 
-    Timer(
-      const Duration(seconds: 3),
-      () {
-        if (!mounted) return;
+    Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const LoginScreen(),
-          ),
-        );
-      },
-    );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    });
   }
 
   @override
@@ -44,10 +38,7 @@ class _SplashScreenState extends State<SplashScreen> {
           gradient: LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: [
-              ThemeApp.primaryDark,
-              ThemeApp.primaryLight,
-            ],
+            colors: [ThemeApp.primaryDark, ThemeApp.primaryLight],
           ),
         ),
 
@@ -56,17 +47,16 @@ class _SplashScreenState extends State<SplashScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-
-                const Icon(
-                  Icons.home_work_rounded,
-                  size: 140,
-                  color: Colors.black,
+                SizedBox(
+                  width: 140,
+                  height: 140,
+                  child: Image.asset('assets/image.png', fit: BoxFit.contain),
                 ),
 
                 const SizedBox(height: 20),
 
                 const Text(
-                  "Barly Kost",
+                  'Barly Kost',
                   style: TextStyle(
                     fontSize: 34,
                     fontWeight: FontWeight.w700,
@@ -77,18 +67,13 @@ class _SplashScreenState extends State<SplashScreen> {
                 const SizedBox(height: 8),
 
                 const Text(
-                  "Temukan Kost Impianmu",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
+                  'Temukan Kost Impianmu',
+                  style: TextStyle(fontSize: 16, color: Colors.black87),
                 ),
 
                 const SizedBox(height: 40),
 
-                const CircularProgressIndicator(
-                  color: Colors.black,
-                ),
+                const CircularProgressIndicator(color: Colors.black),
               ],
             ),
           ),

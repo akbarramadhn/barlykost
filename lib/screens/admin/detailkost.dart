@@ -5,6 +5,8 @@ import '../../models/admin/kost.dart';
 import '../../services/admin/kost_service.dart';
 import '../../widgets/adminbottomnav.dart';
 import 'dashboardadmin.dart';
+import 'pemesanan.dart';
+import 'profile_admin.dart';
 
 class AdminKostDetailScreen extends StatefulWidget {
   final String kostId;
@@ -71,12 +73,18 @@ class _AdminKostDetailScreenState extends State<AdminKostDetailScreen> {
     }
 
     if (index == 2) {
-      _showMessage('Halaman pemesanan belum dibuat');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminBookingScreen()),
+      );
       return;
     }
 
     if (index == 3) {
-      _showMessage('Halaman profil admin belum dibuat');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminProfileScreen()),
+      );
     }
   }
 

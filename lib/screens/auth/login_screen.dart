@@ -164,10 +164,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const Spacer(flex: 1),
 
-                  Icon(
-                    Icons.home_work_rounded,
-                    size: logoSize,
-                    color: Colors.black,
+                  SizedBox(
+                    width: logoSize,
+                    height: logoSize,
+                    child: Image.asset(
+                      'assets/image.png',
+                      fit: BoxFit.contain,
+                    ),
                   ),
 
                   const SizedBox(height: 6),
@@ -320,90 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  const Spacer(flex: 1),
-
-                  const Row(
-                    children: [
-                      Expanded(
-                        child: Divider(
-                          color: Colors.black,
-                          thickness: 1.3,
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          'Atau',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 21,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(
-                          color: Colors.black,
-                          thickness: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const Spacer(flex: 1),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: buttonHeight,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Login Google belum dibuat',
-                            ),
-                          ),
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black87,
-                        side: const BorderSide(
-                          color: Colors.white,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(40),
-                        ),
-                      ),
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'G',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 30,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            SizedBox(width: 18),
-                            Text(
-                              'Masuk dengan Google',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const Spacer(flex: 1),
+                  const SizedBox(height: 32),
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,

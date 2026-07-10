@@ -390,10 +390,6 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
           const SizedBox(height: 30),
           buildDetailLocation(kost),
           const SizedBox(height: 30),
-          buildSectionHeader(title: 'Informasi Jarak'),
-          const SizedBox(height: 16),
-          buildDistanceInformation(),
-          const SizedBox(height: 36),
           buildBookingButton(kost, data.images),
         ],
       ),
@@ -692,26 +688,6 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget buildDistanceInformation() {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        DistanceInfoRow(
-          icon: Icons.train_rounded,
-          title: 'Stasiun Kereta',
-          subtitle:
-              'Stasiun Univ Pancasila : 2,3km\nStasiun Lenteng Agung : 4,2km',
-        ),
-        SizedBox(height: 16),
-        DistanceInfoRow(
-          icon: Icons.flight_rounded,
-          title: 'Bandara',
-          subtitle: 'Bandara Halim Perdana Kusuma : 10,3km',
         ),
       ],
     );

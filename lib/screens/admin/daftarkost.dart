@@ -6,8 +6,12 @@ import '../../services/admin/kost_service.dart';
 import '../../widgets/adminbottomnav.dart';
 import '../../widgets/adminkostcard.dart';
 import 'dashboardadmin.dart';
+import 'tambahkost.dart';
+import 'editkost.dart';
 import 'detailkost.dart';
 import 'pemesanan.dart';
+import 'profile_admin.dart';
+import 'admin_notification_screen.dart';
 
 class AdminKostScreen extends StatefulWidget {
   final ValueChanged<Kost>? onKostTap;
@@ -34,6 +38,7 @@ class _AdminKostScreenState extends State<AdminKostScreen> {
   late Future<List<Kost>> _kostFuture;
 
   bool _onlyAvailable = true;
+  bool _isEditMode = false;
 
   @override
   void initState() {
@@ -74,9 +79,10 @@ class _AdminKostScreenState extends State<AdminKostScreen> {
       return;
     }
 
-    if (index == 3) {
-      showMessage('Halaman profil admin akan dibuat berikutnya');
-    }
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const AdminProfileScreen()),
+    );
   }
 
   Future<void> _refreshData() async {
@@ -109,7 +115,12 @@ class _AdminKostScreenState extends State<AdminKostScreen> {
       onTap:
           widget.onNotificationTap ??
           () {
-            showMessage('Halaman notifikasi belum dibuat');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AdminNotificationScreen(),
+              ),
+            );
           },
       borderRadius: ThemeApp.radius(30),
       child: const SizedBox(
@@ -253,19 +264,26 @@ class _AdminKostScreenState extends State<AdminKostScreen> {
 
   Widget _buildEditButton() {
     return InkWell(
-      onTap:
-          widget.onEditKost ??
-          () {
-            showMessage('Fitur edit kost dibuat pada tahap CRUD');
-          },
+      onTap: () {
+        setState(() {
+          _isEditMode = !_isEditMode;
+        });
+
+        showMessage(
+          _isEditMode ? 'Pilih kost yang ingin diedit' : 'Mode edit dibatalkan',
+        );
+      },
       borderRadius: ThemeApp.radius(30),
       child: Container(
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: ThemeApp.white,
+          color: _isEditMode ? ThemeApp.adminBlue : ThemeApp.white,
           shape: BoxShape.circle,
-          border: Border.all(color: ThemeApp.borderGrey, width: 1.2),
+          border: Border.all(
+            color: _isEditMode ? ThemeApp.adminBlue : ThemeApp.borderGrey,
+            width: 1.2,
+          ),
           boxShadow: [
             ThemeApp.softShadow(
               alpha: 0.04,
@@ -274,10 +292,10 @@ class _AdminKostScreenState extends State<AdminKostScreen> {
             ),
           ],
         ),
-        child: const Icon(
-          Icons.edit_outlined,
+        child: Icon(
+          _isEditMode ? Icons.close_rounded : Icons.edit_outlined,
           size: 26,
-          color: ThemeApp.textDark,
+          color: _isEditMode ? ThemeApp.white : ThemeApp.textDark,
         ),
       ),
     );
@@ -414,7 +432,32 @@ class _AdminKostScreenState extends State<AdminKostScreen> {
 
           return AdminKostCard(
             kost: kost,
-            onTap: () {
+            onTap: () async {
+              if (_isEditMode) {
+                final bool? updated = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EditKostScreen(kostId: kost.id),
+                  ),
+                );
+
+                if (updated == true && mounted) {
+                  setState(() {
+                    _isEditMode = false;
+                  });
+
+                  await _refreshData();
+                  showMessage('Data kost berhasil diperbarui');
+                }
+
+                return;
+              }
+
+              if (widget.onKostTap != null) {
+                widget.onKostTap!(kost);
+                return;
+              }
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -437,11 +480,22 @@ class _AdminKostScreenState extends State<AdminKostScreen> {
         onTap: handleBottomNavTap,
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed:
-            widget.onAddKost ??
-            () {
-              showMessage('Halaman tambah kost dibuat pada tahap CRUD');
-            },
+        onPressed: () async {
+          if (widget.onAddKost != null) {
+            widget.onAddKost!();
+            return;
+          }
+
+          final bool? created = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(builder: (_) => const TambahKostScreen()),
+          );
+
+          if (created == true && mounted) {
+            await _refreshData();
+            showMessage('Daftar kost berhasil diperbarui');
+          }
+        },
         backgroundColor: ThemeApp.adminBlue,
         foregroundColor: ThemeApp.textLight,
         elevation: 4,

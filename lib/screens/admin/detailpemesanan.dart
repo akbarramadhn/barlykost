@@ -3,26 +3,20 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/admin/adminbooking.dart';
 import '../../services/admin/admin_booking_service.dart';
+import 'verifikasipembayaran.dart';
 
-class AdminBookingDetailScreen
-    extends StatefulWidget {
+class AdminBookingDetailScreen extends StatefulWidget {
   final String bookingId;
 
-  const AdminBookingDetailScreen({
-    super.key,
-    required this.bookingId,
-  });
+  const AdminBookingDetailScreen({super.key, required this.bookingId});
 
   @override
-  State<AdminBookingDetailScreen>
-      createState() =>
-          _AdminBookingDetailScreenState();
+  State<AdminBookingDetailScreen> createState() =>
+      _AdminBookingDetailScreenState();
 }
 
-class _AdminBookingDetailScreenState
-    extends State<AdminBookingDetailScreen> {
-  final AdminBookingService _service =
-      AdminBookingService();
+class _AdminBookingDetailScreenState extends State<AdminBookingDetailScreen> {
+  final AdminBookingService _service = AdminBookingService();
 
   late Future<AdminBooking> _bookingFuture;
 
@@ -32,14 +26,11 @@ class _AdminBookingDetailScreenState
   void initState() {
     super.initState();
 
-    _bookingFuture = _service.getBookingById(
-      widget.bookingId,
-    );
+    _bookingFuture = _service.getBookingById(widget.bookingId);
   }
 
   Future<void> _refresh() async {
-    final Future<AdminBooking> newFuture =
-        _service.getBookingById(
+    final Future<AdminBooking> newFuture = _service.getBookingById(
       widget.bookingId,
     );
 
@@ -50,17 +41,12 @@ class _AdminBookingDetailScreenState
     await newFuture;
   }
 
-  void _showMessage(
-    String message, {
-    bool error = false,
-  }) {
+  void _showMessage(String message, {bool error = false}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          backgroundColor: error
-              ? ThemeApp.cancelledRed
-              : ThemeApp.buttonColor,
+          backgroundColor: error ? ThemeApp.cancelledRed : ThemeApp.buttonColor,
           content: Text(message),
         ),
       );
@@ -74,9 +60,7 @@ class _AdminBookingDetailScreenState
 
     return normalized
         .split(RegExp(r'\s+'))
-        .where(
-          (String word) => word.isNotEmpty,
-        )
+        .where((String word) => word.isNotEmpty)
         .map(
           (String word) =>
               '${word[0].toUpperCase()}'
@@ -87,16 +71,10 @@ class _AdminBookingDetailScreenState
 
   String _formatRupiah(int value) {
     final String number = value.toString();
-    final StringBuffer result =
-        StringBuffer();
+    final StringBuffer result = StringBuffer();
 
-    for (
-      int index = 0;
-      index < number.length;
-      index++
-    ) {
-      if (index > 0 &&
-          (number.length - index) % 3 == 0) {
+    for (int index = 0; index < number.length; index++) {
+      if (index > 0 && (number.length - index) % 3 == 0) {
         result.write('.');
       }
 
@@ -106,10 +84,7 @@ class _AdminBookingDetailScreenState
     return 'Rp $result';
   }
 
-  String _formatDate(
-    DateTime? date, {
-    bool withTime = false,
-  }) {
+  String _formatDate(DateTime? date, {bool withTime = false}) {
     if (date == null) {
       return '-';
     }
@@ -138,18 +113,14 @@ class _AdminBookingDetailScreenState
       return base;
     }
 
-    final String hour =
-        date.hour.toString().padLeft(2, '0');
+    final String hour = date.hour.toString().padLeft(2, '0');
 
-    final String minute =
-        date.minute.toString().padLeft(2, '0');
+    final String minute = date.minute.toString().padLeft(2, '0');
 
     return '$base, $hour:$minute';
   }
 
-  Color _statusBackground(
-    AdminBooking booking,
-  ) {
+  Color _statusBackground(AdminBooking booking) {
     if (booking.isCompleted) {
       return ThemeApp.adminSoftBlue;
     }
@@ -158,17 +129,14 @@ class _AdminBookingDetailScreenState
       return ThemeApp.adminSoftGreen;
     }
 
-    if (booking.isRejected ||
-        booking.isCancelled) {
+    if (booking.isRejected || booking.isCancelled) {
       return ThemeApp.adminSoftRed;
     }
 
     return ThemeApp.adminSoftOrange;
   }
 
-  Color _statusForeground(
-    AdminBooking booking,
-  ) {
+  Color _statusForeground(AdminBooking booking) {
     if (booking.isCompleted) {
       return ThemeApp.adminBlue;
     }
@@ -177,23 +145,19 @@ class _AdminBookingDetailScreenState
       return ThemeApp.adminGreen;
     }
 
-    if (booking.isRejected ||
-        booking.isCancelled) {
+    if (booking.isRejected || booking.isCancelled) {
       return ThemeApp.adminRed;
     }
 
     return ThemeApp.pendingOrange;
   }
 
-  IconData _statusIcon(
-    AdminBooking booking,
-  ) {
+  IconData _statusIcon(AdminBooking booking) {
     if (booking.isConfirmed) {
       return Icons.check_circle_outline_rounded;
     }
 
-    if (booking.isRejected ||
-        booking.isCancelled) {
+    if (booking.isRejected || booking.isCancelled) {
       return Icons.cancel_outlined;
     }
 
@@ -235,44 +199,29 @@ class _AdminBookingDetailScreenState
               ),
             ),
           ),
-          const SizedBox(
-            width: 38,
-            height: 38,
-          ),
+          const SizedBox(width: 38, height: 38),
         ],
       ),
     );
   }
 
-  Widget _buildStatusBanner(
-    AdminBooking booking,
-  ) {
-    final Color foreground =
-        _statusForeground(booking);
+  Widget _buildStatusBanner(AdminBooking booking) {
+    final Color foreground = _statusForeground(booking);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 18,
-        vertical: 18,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       decoration: BoxDecoration(
         color: _statusBackground(booking),
         borderRadius: ThemeApp.radius(18),
         border: Border.all(
-          color: foreground.withValues(
-            alpha: 0.35,
-          ),
+          color: foreground.withValues(alpha: 0.35),
           width: 1.2,
         ),
       ),
       child: Row(
         children: [
-          Icon(
-            _statusIcon(booking),
-            color: foreground,
-            size: 25,
-          ),
+          Icon(_statusIcon(booking), color: foreground, size: 25),
           const SizedBox(width: 10),
           Text(
             'Status',
@@ -307,24 +256,17 @@ class _AdminBookingDetailScreenState
     );
   }
 
-  Widget _buildCard({
-    required String title,
-    required List<Widget> children,
-  }) {
+  Widget _buildCard({required String title, required List<Widget> children}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: ThemeApp.white,
         borderRadius: ThemeApp.radius(20),
-        border: Border.all(
-          color: ThemeApp.adminCardBorder,
-          width: 1,
-        ),
+        border: Border.all(color: ThemeApp.adminCardBorder, width: 1),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
@@ -349,9 +291,7 @@ class _AdminBookingDetailScreenState
     bool allowTwoLines = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: 18,
-      ),
+      padding: const EdgeInsets.only(bottom: 18),
       child: Row(
         crossAxisAlignment: allowTwoLines
             ? CrossAxisAlignment.start
@@ -379,35 +319,27 @@ class _AdminBookingDetailScreenState
                     softWrap: true,
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      color: valueColor ??
-                          ThemeApp.textDark,
+                      color: valueColor ?? ThemeApp.textDark,
                       fontSize: 13.5,
                       height: 1.35,
-                      fontWeight: bold
-                          ? FontWeight.w800
-                          : FontWeight.w500,
+                      fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
                     ),
                   )
                 : SizedBox(
                     height: 23,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      alignment:
-                          Alignment.centerRight,
+                      alignment: Alignment.centerRight,
                       child: Text(
                         value,
                         maxLines: 1,
                         softWrap: false,
-                        textAlign:
-                            TextAlign.right,
+                        textAlign: TextAlign.right,
                         style: TextStyle(
-                          color: valueColor ??
-                              ThemeApp.textDark,
+                          color: valueColor ?? ThemeApp.textDark,
                           fontSize: 14,
                           height: 1.2,
-                          fontWeight: bold
-                              ? FontWeight.w800
-                              : FontWeight.w500,
+                          fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
                         ),
                       ),
                     ),
@@ -420,23 +352,15 @@ class _AdminBookingDetailScreenState
 
   Widget _buildDivider() {
     return const Padding(
-      padding: EdgeInsets.only(
-        bottom: 18,
-      ),
-      child: Divider(
-        height: 1,
-        color: ThemeApp.adminCardBorder,
-      ),
+      padding: EdgeInsets.only(bottom: 18),
+      child: Divider(height: 1, color: ThemeApp.adminCardBorder),
     );
   }
 
-  Widget _buildBookingCard(
-    AdminBooking booking,
-  ) {
-    final String phone =
-        booking.tenantPhone.trim().isEmpty
-            ? '-'
-            : booking.tenantPhone.trim();
+  Widget _buildBookingCard(AdminBooking booking) {
+    final String phone = booking.tenantPhone.trim().isEmpty
+        ? '-'
+        : booking.tenantPhone.trim();
 
     final String period =
         '${_formatDate(booking.startDate)} - '
@@ -453,94 +377,61 @@ class _AdminBookingDetailScreenState
         ),
         _buildInformationRow(
           label: 'Tanggal Pemesanan',
-          value: _formatDate(
-            booking.bookingDate,
-            withTime: true,
-          ),
+          value: _formatDate(booking.bookingDate, withTime: true),
         ),
         _buildInformationRow(
           label: 'Penyewa',
           value: booking.tenantName,
           bold: true,
         ),
-        _buildInformationRow(
-          label: 'No. Telepon',
-          value: phone,
-        ),
+        _buildInformationRow(label: 'No. Telepon', value: phone),
         _buildDivider(),
         _buildInformationRow(
           label: 'Kost',
           value: booking.kostName,
           bold: true,
         ),
-        _buildInformationRow(
-          label: 'Periode',
-          value: period,
-        ),
+        _buildInformationRow(label: 'Periode', value: period),
         _buildInformationRow(
           label: 'Total Pembayaran',
-          value: _formatRupiah(
-            booking.paymentAmount ??
-                booking.totalPrice,
-          ),
+          value: _formatRupiah(booking.paymentAmount ?? booking.totalPrice),
           bold: true,
-          valueColor:
-              ThemeApp.adminPurple,
+          valueColor: ThemeApp.adminPurple,
         ),
       ],
     );
   }
 
-  Widget _buildPaymentCard(
-    AdminBooking booking,
-  ) {
+  Widget _buildPaymentCard(AdminBooking booking) {
     final String paymentMethod =
-        booking.paymentMethod
-                    ?.trim()
-                    .isNotEmpty ==
-                true
-            ? booking.paymentMethod!.trim()
-            : '-';
+        booking.paymentMethod?.trim().isNotEmpty == true
+        ? booking.paymentMethod!.trim()
+        : '-';
 
-    final String rawStatus =
-        booking.paymentStatus
-                    ?.trim()
-                    .isNotEmpty ==
-                true
-            ? booking.paymentStatus!.trim()
-            : 'Belum dibayar';
+    final String rawStatus = booking.paymentStatus?.trim().isNotEmpty == true
+        ? booking.paymentStatus!.trim()
+        : 'Belum dibayar';
 
-    final String paymentStatus =
-        _capitalizeWords(rawStatus);
+    final String paymentStatus = _capitalizeWords(rawStatus);
 
     return _buildCard(
       title: 'Informasi Pembayaran',
       children: [
-        _buildInformationRow(
-          label: 'Metode',
-          value: paymentMethod,
-        ),
+        _buildInformationRow(label: 'Metode', value: paymentMethod),
         _buildInformationRow(
           label: 'Nominal',
-          value: _formatRupiah(
-            booking.paymentAmount ??
-                booking.totalPrice,
-          ),
+          value: _formatRupiah(booking.paymentAmount ?? booking.totalPrice),
           bold: true,
         ),
         _buildInformationRow(
           label: 'Tanggal',
-          value: _formatDate(
-            booking.paymentDate,
-            withTime: true,
-          ),
+          value: _formatDate(booking.paymentDate, withTime: true),
         ),
         _buildInformationRow(
           label: 'Status Pembayaran',
           value: paymentStatus,
           bold: true,
-          valueColor:
-              _statusForeground(booking),
+          valueColor: _statusForeground(booking),
         ),
       ],
     );
@@ -549,13 +440,9 @@ class _AdminBookingDetailScreenState
   Widget _buildProofPlaceholder() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 14,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: ThemeApp.adminSoftRed
-            .withValues(alpha: 0.45),
+        color: ThemeApp.adminSoftRed.withValues(alpha: 0.45),
         borderRadius: ThemeApp.radius(14),
       ),
       child: const Row(
@@ -581,112 +468,100 @@ class _AdminBookingDetailScreenState
     );
   }
 
-  Widget _buildProofCard(
-    AdminBooking booking,
-  ) {
-    final String imageUrl =
-        booking.paymentProofUrl?.trim() ?? '';
+  Widget _buildProofCard(AdminBooking booking) {
+    final String imageUrl = booking.paymentProofUrl?.trim() ?? '';
 
-    return _buildCard(
-      title: 'Bukti Pembayaran',
-      children: [
-        if (imageUrl.isEmpty)
-          _buildProofPlaceholder()
-        else
-          InkWell(
-            onTap: () {
-              _showProofDialog(imageUrl);
-            },
-            borderRadius: ThemeApp.radius(16),
-            child: ClipRRect(
-              borderRadius:
-                  ThemeApp.radius(16),
-              child: AspectRatio(
-                aspectRatio: 4 / 3,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (
-                    BuildContext context,
-                    Widget child,
-                    ImageChunkEvent? progress,
-                  ) {
-                    if (progress == null) {
-                      return child;
-                    }
-
-                    return Container(
-                      color:
-                          ThemeApp.softBackground,
-                      alignment: Alignment.center,
-                      child:
-                          const CircularProgressIndicator(
-                        color:
-                            ThemeApp.primaryDark,
-                        strokeWidth: 2.5,
-                      ),
-                    );
-                  },
-                  errorBuilder: (
-                    BuildContext context,
-                    Object error,
-                    StackTrace? stackTrace,
-                  ) {
-                    return _buildProofPlaceholder();
-                  },
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Future<void> _showProofDialog(
-    String imageUrl,
-  ) async {
-    await showDialog<void>(
-      context: context,
-      builder: (
-        BuildContext dialogContext,
-      ) {
-        return Dialog(
-          insetPadding:
-              const EdgeInsets.all(18),
-          backgroundColor: ThemeApp.black,
-          child: Stack(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ThemeApp.white,
+        borderRadius: ThemeApp.radius(20),
+        border: Border.all(color: ThemeApp.adminCardBorder, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              InteractiveViewer(
-                minScale: 0.8,
-                maxScale: 4,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.contain,
+              const Expanded(
+                child: Text(
+                  'Bukti Pembayaran',
+                  style: TextStyle(
+                    color: ThemeApp.adminPurple,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.pop(
-                      dialogContext,
-                    );
-                  },
-                  style: IconButton.styleFrom(
-                    backgroundColor:
-                        ThemeApp.white,
-                  ),
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: ThemeApp.black,
+              InkWell(
+                onTap: () {
+                  _openPaymentVerification(booking);
+                },
+                borderRadius: ThemeApp.radius(12),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                  child: Text(
+                    'Lihat semua',
+                    style: TextStyle(
+                      color: ThemeApp.adminPurple,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 20),
+          if (imageUrl.isEmpty)
+            _buildProofPlaceholder()
+          else
+            InkWell(
+              onTap: () {
+                _openPaymentVerification(booking);
+              },
+              borderRadius: ThemeApp.radius(16),
+              child: ClipRRect(
+                borderRadius: ThemeApp.radius(16),
+                child: AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder:
+                        (
+                          BuildContext context,
+                          Widget child,
+                          ImageChunkEvent? progress,
+                        ) {
+                          if (progress == null) {
+                            return child;
+                          }
+
+                          return Container(
+                            color: ThemeApp.softBackground,
+                            alignment: Alignment.center,
+                            child: const CircularProgressIndicator(
+                              color: ThemeApp.primaryDark,
+                              strokeWidth: 2.5,
+                            ),
+                          );
+                        },
+                    errorBuilder:
+                        (
+                          BuildContext context,
+                          Object error,
+                          StackTrace? stackTrace,
+                        ) {
+                          return _buildProofPlaceholder();
+                        },
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -696,18 +571,12 @@ class _AdminBookingDetailScreenState
     required String action,
     required Color color,
   }) async {
-    final bool? result =
-        await showDialog<bool>(
+    final bool? result = await showDialog<bool>(
       context: context,
-      builder: (
-        BuildContext dialogContext,
-      ) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           backgroundColor: ThemeApp.white,
-          shape: RoundedRectangleBorder(
-            borderRadius:
-                ThemeApp.radius(20),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: ThemeApp.radius(20)),
           title: Text(
             title,
             style: const TextStyle(
@@ -726,30 +595,19 @@ class _AdminBookingDetailScreenState
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
+                Navigator.pop(dialogContext, false);
               },
               child: const Text('Batal'),
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
+                Navigator.pop(dialogContext, true);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: color,
-                foregroundColor:
-                    ThemeApp.white,
-                minimumSize:
-                    const Size(0, 44),
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 20,
-                ),
+                foregroundColor: ThemeApp.white,
+                minimumSize: const Size(0, 44),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
               ),
               child: Text(action),
             ),
@@ -761,11 +619,23 @@ class _AdminBookingDetailScreenState
     return result ?? false;
   }
 
-  Future<void> _verify(
-    AdminBooking booking,
-  ) async {
-    final bool confirmed =
-        await _confirm(
+  Future<void> _openPaymentVerification(AdminBooking booking) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminPaymentVerificationScreen(bookingId: booking.id),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _refresh();
+  }
+
+  Future<void> _verify(AdminBooking booking) async {
+    final bool confirmed = await _confirm(
       title: 'Verifikasi Pembayaran',
       message: booking.hasPaymentProof
           ? 'Pastikan nominal dan bukti pembayaran sudah sesuai sebelum melakukan verifikasi.'
@@ -783,25 +653,18 @@ class _AdminBookingDetailScreenState
     });
 
     try {
-      await _service.verifyPayment(
-        booking,
-      );
+      await _service.verifyPayment(booking);
 
       if (!mounted) {
         return;
       }
 
-      _showMessage(
-        'Pembayaran berhasil diverifikasi.',
-      );
+      _showMessage('Pembayaran berhasil diverifikasi.');
 
       await _refresh();
     } catch (error) {
       if (mounted) {
-        _showMessage(
-          error.toString(),
-          error: true,
-        );
+        _showMessage(error.toString(), error: true);
       }
     } finally {
       if (mounted) {
@@ -812,11 +675,8 @@ class _AdminBookingDetailScreenState
     }
   }
 
-  Future<void> _reject(
-    AdminBooking booking,
-  ) async {
-    final bool confirmed =
-        await _confirm(
+  Future<void> _reject(AdminBooking booking) async {
+    final bool confirmed = await _confirm(
       title: 'Tolak Pembayaran',
       message:
           'Pembayaran akan ditolak dan status pembayaran diperbarui menjadi ditolak.',
@@ -833,25 +693,18 @@ class _AdminBookingDetailScreenState
     });
 
     try {
-      await _service.rejectPayment(
-        booking,
-      );
+      await _service.rejectPayment(booking);
 
       if (!mounted) {
         return;
       }
 
-      _showMessage(
-        'Pembayaran berhasil ditolak.',
-      );
+      _showMessage('Pembayaran berhasil ditolak.');
 
       await _refresh();
     } catch (error) {
       if (mounted) {
-        _showMessage(
-          error.toString(),
-          error: true,
-        );
+        _showMessage(error.toString(), error: true);
       }
     } finally {
       if (mounted) {
@@ -862,34 +715,19 @@ class _AdminBookingDetailScreenState
     }
   }
 
-  Widget _buildActions(
-    AdminBooking booking,
-  ) {
-    final bool canVerify =
-        booking.canVerifyPayment &&
-        !_isProcessing;
+  Widget _buildActions(AdminBooking booking) {
+    final bool canVerify = booking.canVerifyPayment && !_isProcessing;
 
-    final bool canReject =
-        booking.canRejectPayment &&
-        !_isProcessing;
+    final bool canReject = booking.canRejectPayment && !_isProcessing;
 
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(
-          24,
-          13,
-          24,
-          15,
-        ),
+        padding: const EdgeInsets.fromLTRB(24, 13, 24, 15),
         decoration: BoxDecoration(
           color: ThemeApp.white,
           border: const Border(
-            top: BorderSide(
-              color:
-                  ThemeApp.adminCardBorder,
-              width: 1,
-            ),
+            top: BorderSide(color: ThemeApp.adminCardBorder, width: 1),
           ),
           boxShadow: [
             ThemeApp.softShadow(
@@ -910,31 +748,22 @@ class _AdminBookingDetailScreenState
                           _reject(booking);
                         }
                       : null,
-                  style:
-                      OutlinedButton.styleFrom(
-                    foregroundColor:
-                        ThemeApp.cancelledRed,
-                    disabledForegroundColor:
-                        ThemeApp.textGrey,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ThemeApp.cancelledRed,
+                    disabledForegroundColor: ThemeApp.textGrey,
                     side: BorderSide(
                       color: canReject
                           ? ThemeApp.cancelledRed
                           : ThemeApp.borderGrey,
                       width: 1.3,
                     ),
-                    shape:
-                        RoundedRectangleBorder(
-                      borderRadius:
-                          ThemeApp.radius(16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: ThemeApp.radius(16),
                     ),
                   ),
                   child: const Text(
                     'Tolak',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight:
-                          FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
@@ -949,30 +778,21 @@ class _AdminBookingDetailScreenState
                           _verify(booking);
                         }
                       : null,
-                  style:
-                      ElevatedButton.styleFrom(
-                    backgroundColor:
-                        ThemeApp.successGreen,
-                    foregroundColor:
-                        ThemeApp.white,
-                    disabledBackgroundColor:
-                        ThemeApp.lightGrey,
-                    disabledForegroundColor:
-                        ThemeApp.textGrey,
-                    shape:
-                        RoundedRectangleBorder(
-                      borderRadius:
-                          ThemeApp.radius(16),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ThemeApp.successGreen,
+                    foregroundColor: ThemeApp.white,
+                    disabledBackgroundColor: ThemeApp.lightGrey,
+                    disabledForegroundColor: ThemeApp.textGrey,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: ThemeApp.radius(16),
                     ),
                   ),
                   child: _isProcessing
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child:
-                              CircularProgressIndicator(
-                            color:
-                                ThemeApp.white,
+                          child: CircularProgressIndicator(
+                            color: ThemeApp.white,
                             strokeWidth: 2.3,
                           ),
                         )
@@ -980,8 +800,7 @@ class _AdminBookingDetailScreenState
                           'Verifikasi',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight:
-                                FontWeight.w800,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                 ),
@@ -993,21 +812,13 @@ class _AdminBookingDetailScreenState
     );
   }
 
-  Widget _buildContent(
-    AdminBooking booking,
-  ) {
+  Widget _buildContent(AdminBooking booking) {
     return RefreshIndicator(
       onRefresh: _refresh,
       color: ThemeApp.primaryDark,
       child: ListView(
-        physics:
-            const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          24,
-          0,
-          24,
-          30,
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 30),
         children: [
           _buildHeader(),
           const SizedBox(height: 10),
@@ -1023,21 +834,13 @@ class _AdminBookingDetailScreenState
     );
   }
 
-  Widget _buildError(
-    Object? error,
-  ) {
+  Widget _buildError(Object? error) {
     return RefreshIndicator(
       onRefresh: _refresh,
       color: ThemeApp.primaryDark,
       child: ListView(
-        physics:
-            const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          24,
-          140,
-          24,
-          40,
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(24, 140, 24, 40),
         children: [
           const Icon(
             Icons.cloud_off_outlined,
@@ -1068,22 +871,14 @@ class _AdminBookingDetailScreenState
           Center(
             child: OutlinedButton(
               onPressed: _refresh,
-              style:
-                  OutlinedButton.styleFrom(
-                foregroundColor:
-                    ThemeApp.buttonColor,
-                side: const BorderSide(
-                  color:
-                      ThemeApp.buttonColor,
-                ),
-                shape:
-                    RoundedRectangleBorder(
-                  borderRadius:
-                      ThemeApp.radius(18),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ThemeApp.buttonColor,
+                side: const BorderSide(color: ThemeApp.buttonColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: ThemeApp.radius(18),
                 ),
               ),
-              child:
-                  const Text('Coba lagi'),
+              child: const Text('Coba lagi'),
             ),
           ),
         ],
@@ -1092,42 +887,26 @@ class _AdminBookingDetailScreenState
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return FutureBuilder<AdminBooking>(
       future: _bookingFuture,
-      builder: (
-        BuildContext context,
-        AsyncSnapshot<AdminBooking> snapshot,
-      ) {
+      builder: (BuildContext context, AsyncSnapshot<AdminBooking> snapshot) {
         return Scaffold(
           backgroundColor: ThemeApp.white,
-          bottomNavigationBar:
-              snapshot.hasData
-                  ? _buildActions(
-                      snapshot.data!,
-                    )
-                  : null,
+          bottomNavigationBar: snapshot.hasData
+              ? _buildActions(snapshot.data!)
+              : null,
           body: SafeArea(
             bottom: false,
-            child:
-                snapshot.connectionState ==
-                        ConnectionState.waiting
-                    ? const Center(
-                        child:
-                            CircularProgressIndicator(
-                          color:
-                              ThemeApp.primaryDark,
-                        ),
-                      )
-                    : snapshot.hasError
-                        ? _buildError(
-                            snapshot.error,
-                          )
-                        : _buildContent(
-                            snapshot.data!,
-                          ),
+            child: snapshot.connectionState == ConnectionState.waiting
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: ThemeApp.primaryDark,
+                    ),
+                  )
+                : snapshot.hasError
+                ? _buildError(snapshot.error)
+                : _buildContent(snapshot.data!),
           ),
         );
       },

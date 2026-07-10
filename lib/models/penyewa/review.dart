@@ -1,67 +1,70 @@
-class ReviewModel {
-  final String id;
+class Review {
+  final String? id;
+  final String bookingId;
   final String userId;
   final String kostId;
-  final double rating;
-  final String comment;
-  final String createdAt;
+  final int rating;
+  final String? comment;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
-  const ReviewModel({
-    required this.id,
+  const Review({
+    this.id,
+    required this.bookingId,
     required this.userId,
     required this.kostId,
     required this.rating,
-    required this.comment,
-    required this.createdAt,
+    this.comment,
+    this.createdAt,
+    this.updatedAt,
   });
 
-  factory ReviewModel.fromMap(Map<String, dynamic> map) {
-    return ReviewModel(
-      id: map['id']?.toString() ?? '',
-      userId: map['user_id']?.toString() ??
-          map['penyewa_id']?.toString() ??
-          '',
+  factory Review.fromMap(Map<String, dynamic> map) {
+    return Review(
+      id: map['id']?.toString(),
+      bookingId: map['booking_id']?.toString() ?? '',
+      userId: map['user_id']?.toString() ?? '',
       kostId: map['kost_id']?.toString() ?? '',
-      rating: _parseDouble(map['rating']),
-      comment: map['comment']?.toString() ??
-          map['komentar']?.toString() ??
-          map['review']?.toString() ??
-          '',
-      createdAt: map['created_at']?.toString() ?? '',
+      rating: _parseInt(map['rating']),
+      comment: map['comment']?.toString(),
+      createdAt: _parseDate(map['created_at']),
+      updatedAt: _parseDate(map['updated_at']),
     );
   }
 
-  factory ReviewModel.empty() {
-    return const ReviewModel(
-      id: '',
-      userId: '',
-      kostId: '',
-      rating: 0,
-      comment: '',
-      createdAt: '',
-    );
-  }
-
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toInsertMap() {
     return {
-      'id': id,
+      'booking_id': bookingId,
       'user_id': userId,
       'kost_id': kostId,
       'rating': rating,
-      'comment': comment,
-      'created_at': createdAt,
+      'comment': comment?.trim().isEmpty == true
+          ? null
+          : comment?.trim(),
     };
   }
 
-  static double _parseDouble(dynamic value) {
-    if (value is double) {
+  static int _parseInt(dynamic value) {
+    if (value is int) {
       return value;
     }
 
     if (value is num) {
-      return value.toDouble();
+      return value.toInt();
     }
 
-    return double.tryParse(value?.toString() ?? '') ?? 0.0;
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is DateTime) {
+      return value;
+    }
+
+    return DateTime.tryParse(value.toString());
   }
 }

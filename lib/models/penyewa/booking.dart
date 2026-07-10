@@ -248,8 +248,9 @@ class Booking {
   }
 
   bool get canReview {
-    return normalizedStatus == completed;
-  }
+  return normalizedStatus == completed ||
+      normalizedStatus == confirmed;
+}
 
   bool get isWaitingVerification {
     return normalizedStatus == waitingVerification;

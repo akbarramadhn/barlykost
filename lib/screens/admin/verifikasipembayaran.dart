@@ -7,10 +7,7 @@ import '../../services/admin/admin_booking_service.dart';
 class AdminPaymentVerificationScreen extends StatefulWidget {
   final String bookingId;
 
-  const AdminPaymentVerificationScreen({
-    super.key,
-    required this.bookingId,
-  });
+  const AdminPaymentVerificationScreen({super.key, required this.bookingId});
 
   @override
   State<AdminPaymentVerificationScreen> createState() =>
@@ -43,16 +40,12 @@ class _AdminPaymentVerificationScreenState
     await newFuture;
   }
 
-  void _showMessage(
-    String message, {
-    bool error = false,
-  }) {
+  void _showMessage(String message, {bool error = false}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          backgroundColor:
-              error ? ThemeApp.cancelledRed : ThemeApp.buttonColor,
+          backgroundColor: error ? ThemeApp.cancelledRed : ThemeApp.buttonColor,
           content: Text(message),
         ),
       );
@@ -87,7 +80,6 @@ class _AdminPaymentVerificationScreenState
         )
         .join(' ');
   }
-
 
   String _formatPaymentMethod(String? value) {
     final String rawValue = value?.trim() ?? '';
@@ -150,7 +142,7 @@ class _AdminPaymentVerificationScreenState
 
   Widget _buildHeader() {
     return SizedBox(
-      height: 82,
+      height: 76,
       child: Row(
         children: [
           InkWell(
@@ -164,22 +156,28 @@ class _AdminPaymentVerificationScreenState
               child: Icon(
                 Icons.arrow_back_ios_new_rounded,
                 color: ThemeApp.textDark,
-                size: 25,
+                size: 24,
               ),
             ),
           ),
+          const SizedBox(width: 8),
           const Expanded(
-            child: Text(
-              'Verifikasi Pembayaran',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: ThemeApp.textDark,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'Verifikasi Pembayaran',
+                maxLines: 1,
+                softWrap: false,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ThemeApp.textDark,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 42, height: 42),
+          const SizedBox(width: 50),
         ],
       ),
     );
@@ -189,8 +187,8 @@ class _AdminPaymentVerificationScreenState
     final String imageUrl = booking.tenantProfileImageUrl?.trim() ?? '';
 
     return Container(
-      width: 58,
-      height: 58,
+      width: double.infinity,
+      height: double.infinity,
       decoration: const BoxDecoration(
         color: Color(0xFFD9D2FF),
         shape: BoxShape.circle,
@@ -199,23 +197,24 @@ class _AdminPaymentVerificationScreenState
           ? const Icon(
               Icons.person_outline_rounded,
               color: ThemeApp.adminPurple,
-              size: 36,
+              size: 34,
             )
           : ClipOval(
               child: Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (
-                  BuildContext context,
-                  Object error,
-                  StackTrace? stackTrace,
-                ) {
-                  return const Icon(
-                    Icons.person_outline_rounded,
-                    color: ThemeApp.adminPurple,
-                    size: 36,
-                  );
-                },
+                errorBuilder:
+                    (
+                      BuildContext context,
+                      Object error,
+                      StackTrace? stackTrace,
+                    ) {
+                      return const Icon(
+                        Icons.person_outline_rounded,
+                        color: ThemeApp.adminPurple,
+                        size: 34,
+                      );
+                    },
               ),
             ),
     );
@@ -226,51 +225,64 @@ class _AdminPaymentVerificationScreenState
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(22, 28, 22, 28),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 19),
       decoration: BoxDecoration(
         color: ThemeApp.white,
         borderRadius: ThemeApp.radius(20),
-        border: Border.all(
-          color: ThemeApp.adminCardBorder,
-          width: 1,
-        ),
+        border: Border.all(color: ThemeApp.adminCardBorder, width: 1),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildTenantAvatar(booking),
-          const SizedBox(width: 18),
+          SizedBox(width: 52, height: 52, child: _buildTenantAvatar(booking)),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  booking.tenantName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: ThemeApp.textDark,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                SizedBox(
+                  height: 27,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      booking.tenantName,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: const TextStyle(
+                        color: ThemeApp.textDark,
+                        fontSize: 17.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 9),
                 Row(
                   children: [
                     const Icon(
                       Icons.bed_rounded,
                       color: ThemeApp.textGrey,
-                      size: 23,
+                      size: 18,
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 5),
                     Expanded(
-                      child: Text(
-                        booking.kostName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: ThemeApp.textGrey,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                      child: SizedBox(
+                        height: 28,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            booking.kostName,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: const TextStyle(
+                              color: ThemeApp.textGrey,
+                              fontSize: 18.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -279,38 +291,56 @@ class _AdminPaymentVerificationScreenState
               ],
             ),
           ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: _statusBackground(booking),
-                  borderRadius: ThemeApp.radius(10),
-                ),
-                child: Text(
-                  _shortStatus(booking),
-                  style: TextStyle(
-                    color: _statusForeground(booking),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
+          const SizedBox(width: 7),
+          SizedBox(
+            width: 96,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _statusBackground(booking),
+                    borderRadius: ThemeApp.radius(10),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _shortStatus(booking),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        color: _statusForeground(booking),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                _formatRupiah(total),
-                style: const TextStyle(
-                  color: ThemeApp.textDark,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 24,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      _formatRupiah(total),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: const TextStyle(
+                        color: ThemeApp.textDark,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -375,31 +405,25 @@ class _AdminPaymentVerificationScreenState
           imageUrl,
           width: double.infinity,
           fit: BoxFit.fitWidth,
-          loadingBuilder: (
-            BuildContext context,
-            Widget child,
-            ImageChunkEvent? progress,
-          ) {
-            if (progress == null) return child;
+          loadingBuilder:
+              (BuildContext context, Widget child, ImageChunkEvent? progress) {
+                if (progress == null) return child;
 
-            return Container(
-              width: double.infinity,
-              height: 420,
-              color: ThemeApp.softBackground,
-              alignment: Alignment.center,
-              child: const CircularProgressIndicator(
-                color: ThemeApp.primaryDark,
-                strokeWidth: 2.5,
-              ),
-            );
-          },
-          errorBuilder: (
-            BuildContext context,
-            Object error,
-            StackTrace? stackTrace,
-          ) {
-            return _buildProofPlaceholder();
-          },
+                return Container(
+                  width: double.infinity,
+                  height: 420,
+                  color: ThemeApp.softBackground,
+                  alignment: Alignment.center,
+                  child: const CircularProgressIndicator(
+                    color: ThemeApp.primaryDark,
+                    strokeWidth: 2.5,
+                  ),
+                );
+              },
+          errorBuilder:
+              (BuildContext context, Object error, StackTrace? stackTrace) {
+                return _buildProofPlaceholder();
+              },
         ),
       ),
     );
@@ -417,10 +441,7 @@ class _AdminPaymentVerificationScreenState
               InteractiveViewer(
                 minScale: 0.8,
                 maxScale: 4,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.contain,
-                ),
+                child: Image.network(imageUrl, fit: BoxFit.contain),
               ),
               Positioned(
                 top: 8,
@@ -429,13 +450,8 @@ class _AdminPaymentVerificationScreenState
                   onPressed: () {
                     Navigator.pop(dialogContext);
                   },
-                  style: IconButton.styleFrom(
-                    backgroundColor: ThemeApp.white,
-                  ),
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: ThemeApp.black,
-                  ),
+                  style: IconButton.styleFrom(backgroundColor: ThemeApp.white),
+                  icon: const Icon(Icons.close_rounded, color: ThemeApp.black),
                 ),
               ),
             ],
@@ -449,6 +465,7 @@ class _AdminPaymentVerificationScreenState
     required String label,
     required String value,
     bool boldValue = false,
+    bool forceOneLine = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -456,8 +473,11 @@ class _AdminPaymentVerificationScreenState
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
+            flex: 5,
             child: Text(
               label,
+              maxLines: 1,
+              softWrap: false,
               style: const TextStyle(
                 color: ThemeApp.textDark,
                 fontSize: 16,
@@ -466,18 +486,40 @@ class _AdminPaymentVerificationScreenState
             ),
           ),
           const SizedBox(width: 16),
-          Flexible(
-            child: Text(
-              value,
-              maxLines: 2,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: ThemeApp.textDark,
-                fontSize: 16,
-                height: 1.25,
-                fontWeight: boldValue ? FontWeight.w900 : FontWeight.w500,
-              ),
-            ),
+          Expanded(
+            flex: 6,
+            child: forceOneLine
+                ? SizedBox(
+                    height: 23,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        softWrap: false,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: ThemeApp.textDark,
+                          fontSize: 15,
+                          fontWeight: boldValue
+                              ? FontWeight.w900
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  )
+                : Text(
+                    value,
+                    maxLines: 2,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: ThemeApp.textDark,
+                      fontSize: 16,
+                      height: 1.25,
+                      fontWeight: boldValue ? FontWeight.w900 : FontWeight.w500,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -485,9 +527,7 @@ class _AdminPaymentVerificationScreenState
   }
 
   Widget _buildPaymentDetails(AdminBooking booking) {
-    final String method = _formatPaymentMethod(
-      booking.paymentMethod,
-    );
+    final String method = _formatPaymentMethod(booking.paymentMethod);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,16 +536,11 @@ class _AdminPaymentVerificationScreenState
         const SizedBox(height: 16),
         _buildPaymentDetailRow(
           label: 'Total Pembayaran',
-          value: _formatRupiah(
-            booking.paymentAmount ?? booking.totalPrice,
-          ),
+          value: _formatRupiah(booking.paymentAmount ?? booking.totalPrice),
           boldValue: true,
         ),
         const Divider(height: 1, color: ThemeApp.adminCardBorder),
-        _buildPaymentDetailRow(
-          label: 'Metode Pembayaran',
-          value: method,
-        ),
+        _buildPaymentDetailRow(label: 'Metode Pembayaran', value: method),
         const Divider(height: 1, color: ThemeApp.adminCardBorder),
         _buildPaymentDetailRow(
           label: 'No. Rekening Tujuan',
@@ -516,6 +551,7 @@ class _AdminPaymentVerificationScreenState
           label: 'Atas Nama',
           value: 'Barly Kost Indonesia',
           boldValue: true,
+          forceOneLine: true,
         ),
       ],
     );
@@ -532,9 +568,7 @@ class _AdminPaymentVerificationScreenState
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           backgroundColor: ThemeApp.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: ThemeApp.radius(20),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: ThemeApp.radius(20)),
           title: Text(
             title,
             style: const TextStyle(
@@ -668,10 +702,7 @@ class _AdminPaymentVerificationScreenState
         decoration: BoxDecoration(
           color: ThemeApp.white,
           border: const Border(
-            top: BorderSide(
-              color: ThemeApp.adminCardBorder,
-              width: 1,
-            ),
+            top: BorderSide(color: ThemeApp.adminCardBorder, width: 1),
           ),
           boxShadow: [
             ThemeApp.softShadow(
@@ -707,10 +738,7 @@ class _AdminPaymentVerificationScreenState
                   ),
                   child: const Text(
                     'Tolak',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                   ),
                 ),
               ),
@@ -838,14 +866,12 @@ class _AdminPaymentVerificationScreenState
   Widget build(BuildContext context) {
     return FutureBuilder<AdminBooking>(
       future: _bookingFuture,
-      builder: (
-        BuildContext context,
-        AsyncSnapshot<AdminBooking> snapshot,
-      ) {
+      builder: (BuildContext context, AsyncSnapshot<AdminBooking> snapshot) {
         return Scaffold(
           backgroundColor: ThemeApp.white,
-          bottomNavigationBar:
-              snapshot.hasData ? _buildBottomActions(snapshot.data!) : null,
+          bottomNavigationBar: snapshot.hasData
+              ? _buildBottomActions(snapshot.data!)
+              : null,
           body: SafeArea(
             bottom: false,
             child: snapshot.connectionState == ConnectionState.waiting
@@ -855,8 +881,8 @@ class _AdminPaymentVerificationScreenState
                     ),
                   )
                 : snapshot.hasError
-                    ? _buildError(snapshot.error)
-                    : _buildContent(snapshot.data!),
+                ? _buildError(snapshot.error)
+                : _buildContent(snapshot.data!),
           ),
         );
       },

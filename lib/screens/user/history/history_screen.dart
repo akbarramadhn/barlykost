@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../models/penyewa/kost.dart';
 import '../../../models/penyewa/booking.dart';
 import '../../../services/penyewa/booking_service.dart';
+import '../../../services/penyewa/review_service.dart';
 import '../../../widgets/bottomnav.dart';
 import '../../../widgets/emptystate.dart';
 import '../kost/daftarkost.dart';
@@ -11,6 +12,7 @@ import '../kost/kost_detail.dart';
 import '../profile/profile_screen.dart';
 import '../booking/booking_success.dart';
 import '../payment/payment_screen.dart';
+import '../review/tulis_ulasan.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -21,10 +23,13 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final BookingService bookingService = BookingService();
+  final ReviewService reviewService = ReviewService();
 
   late Future<List<Booking>> historyFuture;
 
   int selectedNavIndex = 2;
+
+  Set<String> reviewedBookingIds = <String>{};
 
   @override
   void initState() {
@@ -32,8 +37,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     historyFuture = fetchHistory();
   }
 
-  Future<List<Booking>> fetchHistory() {
-    return bookingService.getCurrentUserBookings();
+  Future<List<Booking>> fetchHistory() async {
+    final List<Booking> bookings =
+        await bookingService.getCurrentUserBookings();
+
+    reviewedBookingIds =
+        await reviewService.getReviewedBookingIds();
+
+    return bookings;
   }
 
   Future<void> refreshData() async {
@@ -310,16 +321,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       text: item.statusLabel,
                       textColor: getStatusColor(item.normalizedStatus),
                     ),
-                    if (item.canReview) ...[
+                    if (item.canReview && item.id != null) ...[
                       const SizedBox(height: 7),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: showReviewInfo,
+                        onTap: reviewedBookingIds.contains(item.id)
+                            ? null
+                            : () {
+                                openReviewScreen(item);
+                              },
                         child: buildInfoRow(
-                          icon: Icons.chat_rounded,
-                          iconColor: ThemeApp.locationBlue,
-                          text: 'Tulis Ulasan',
-                          textColor: ThemeApp.locationBlue,
+                          icon: reviewedBookingIds.contains(item.id)
+                              ? Icons.check_circle_outline_rounded
+                              : Icons.chat_rounded,
+                          iconColor: reviewedBookingIds.contains(item.id)
+                              ? ThemeApp.successGreen
+                              : ThemeApp.locationBlue,
+                          text: reviewedBookingIds.contains(item.id)
+                              ? 'Ulasan Terkirim'
+                              : 'Tulis Ulasan',
+                          textColor: reviewedBookingIds.contains(item.id)
+                              ? ThemeApp.successGreen
+                              : ThemeApp.locationBlue,
                         ),
                       ),
                     ],
@@ -565,14 +588,39 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  void showReviewInfo() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Halaman ulasan akan disambungkan setelah review page selesai',
-        ),
-        duration: Duration(seconds: 1),
+  Future<void> openReviewScreen(Booking booking) async {
+    final String? bookingId = booking.id;
+
+    if (bookingId == null || bookingId.isEmpty) {
+      _showReviewMessage('ID pemesanan tidak ditemukan');
+      return;
+    }
+
+    final bool? created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) {
+          return TulisUlasanScreen(
+            bookingId: bookingId,
+            kostId: booking.kostId,
+            kostName: booking.kostName,
+          );
+        },
       ),
     );
+
+    if (created == true && mounted) {
+      await refreshData();
+    }
+  }
+
+  void _showReviewMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+        ),
+      );
   }
 }
