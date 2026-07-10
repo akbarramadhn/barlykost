@@ -718,39 +718,57 @@ class _DetailKostScreenState extends State<DetailKostScreen> {
   }
 
   Widget buildBookingButton(KostModel kost, List<String> images) {
-    final isAvailable = kost.available > 0;
+    final bool kamarTersedia = kost.available > 0;
 
     return SizedBox(
       width: double.infinity,
       height: 62,
       child: ElevatedButton(
-        onPressed: isAvailable
+        onPressed: kamarTersedia
             ? () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) {
-                      return BookingScreen(kost: kost, images: images);
-                    },
-                  ),
-                );
+                _openBooking(kost: kost, images: images);
               }
             : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: ThemeApp.buttonColor,
           foregroundColor: ThemeApp.white,
-          disabledBackgroundColor: ThemeApp.textGrey,
-          elevation: 0,
+          disabledBackgroundColor: ThemeApp.lightGrey,
+          disabledForegroundColor: ThemeApp.textGrey,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(34),
+            borderRadius: BorderRadius.circular(31),
           ),
         ),
         child: Text(
-          isAvailable ? 'Pesan Kost' : 'Kamar Penuh',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          kamarTersedia ? 'Pesan Sekarang' : 'Kamar Penuh',
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
         ),
       ),
     );
+  }
+
+  Future<void> _openBooking({
+    required KostModel kost,
+    required List<String> images,
+  }) async {
+    if (kost.available <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kamar kost sudah tidak tersedia')),
+      );
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookingScreen(kost: kost, images: images),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await refreshData();
   }
 
   void handleBottomNavTap(int index) {

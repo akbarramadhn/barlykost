@@ -4,7 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/admin/kost.dart';
 import '../../services/admin/kost_service.dart';
 import '../../widgets/adminbottomnav.dart';
-import 'dashboard_screen.dart';
+import 'dashboardadmin.dart';
 
 class AdminKostDetailScreen extends StatefulWidget {
   final String kostId;
@@ -128,8 +128,8 @@ class _AdminKostDetailScreenState extends State<AdminKostDetailScreen> {
             },
             borderRadius: ThemeApp.radius(30),
             child: const SizedBox(
-              width: 50,
-              height: 50,
+              width: 38,
+              height: 38,
               child: Icon(
                 Icons.arrow_back_ios_new_rounded,
                 size: 27,

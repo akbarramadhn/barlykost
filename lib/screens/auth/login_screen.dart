@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../services/auth_service.dart';
-import '../admin/dashboard_screen.dart';
+import '../admin/dashboardadmin.dart';
 import '../user/home/home_screen.dart';
 import 'register_screen.dart';
 

@@ -5,8 +5,9 @@ import '../../models/admin/kost.dart';
 import '../../services/admin/kost_service.dart';
 import '../../widgets/adminbottomnav.dart';
 import '../../widgets/adminkostcard.dart';
-import 'dashboard_screen.dart';
+import 'dashboardadmin.dart';
 import 'detailkost.dart';
+import 'pemesanan.dart';
 
 class AdminKostScreen extends StatefulWidget {
   final ValueChanged<Kost>? onKostTap;
@@ -66,7 +67,10 @@ class _AdminKostScreenState extends State<AdminKostScreen> {
     }
 
     if (index == 2) {
-      showMessage('Halaman pemesanan akan dibuat berikutnya');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminBookingScreen()),
+      );
       return;
     }
 
