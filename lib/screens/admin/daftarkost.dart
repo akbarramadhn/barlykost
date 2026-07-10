@@ -1,61 +1,67 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../models/admin/dashboard.dart';
+import '../../models/admin/kost.dart';
 import '../../services/admin/kost_service.dart';
 import '../../widgets/adminbottomnav.dart';
-import '../../widgets/emptystate.dart';
-import '../../widgets/searchbar.dart';
+import '../../widgets/adminkostcard.dart';
 import 'dashboard_screen.dart';
+import 'detailkost.dart';
 
 class AdminKostScreen extends StatefulWidget {
-  const AdminKostScreen({super.key});
+  final ValueChanged<Kost>? onKostTap;
+  final VoidCallback? onAddKost;
+  final VoidCallback? onEditKost;
+  final VoidCallback? onNotificationTap;
+
+  const AdminKostScreen({
+    super.key,
+    this.onKostTap,
+    this.onAddKost,
+    this.onEditKost,
+    this.onNotificationTap,
+  });
 
   @override
   State<AdminKostScreen> createState() => _AdminKostScreenState();
 }
 
 class _AdminKostScreenState extends State<AdminKostScreen> {
-  final AdminKostService kostService = AdminKostService();
-  final TextEditingController searchController = TextEditingController();
+  final KostService _kostService = KostService();
+  final TextEditingController _searchController = TextEditingController();
 
-  late Future<List<AdminKostSummary>> kostFuture;
-  String searchKeyword = '';
+  late Future<List<Kost>> _kostFuture;
+
+  bool _onlyAvailable = true;
 
   @override
   void initState() {
     super.initState();
-    kostFuture = getKostList();
+    _kostFuture = _kostService.getAllKosts();
   }
 
   @override
   void dispose() {
-    searchController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  Future<List<AdminKostSummary>> getKostList() {
-    return kostService.getKostList();
-  }
-
-  Future<void> refreshKost() async {
-    setState(() {
-      kostFuture = getKostList();
-    });
-
-    await kostFuture;
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void handleBottomNavTap(int index) {
-    if (index == 1) {
-      return;
-    }
-
     if (index == 0) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const DashboardScreen()),
       );
+      return;
+    }
+
+    if (index == 1) {
       return;
     }
 
@@ -69,332 +75,413 @@ class _AdminKostScreenState extends State<AdminKostScreen> {
     }
   }
 
-  List<AdminKostSummary> filterKost(List<AdminKostSummary> kostList) {
-    final keyword = searchKeyword.toLowerCase().trim();
+  Future<void> _refreshData() async {
+    final Future<List<Kost>> newFuture = _kostService.getAllKosts();
 
-    if (keyword.isEmpty) {
-      return kostList;
+    setState(() {
+      _kostFuture = newFuture;
+    });
+
+    await newFuture;
+  }
+
+  List<Kost> _filterKosts(List<Kost> kosts) {
+    final String keyword = _searchController.text.trim().toLowerCase();
+
+    return kosts.where((Kost kost) {
+      final bool matchesAvailability = !_onlyAvailable || kost.tersedia > 0;
+
+      final bool matchesKeyword =
+          keyword.isEmpty ||
+          kost.namaKost.toLowerCase().contains(keyword) ||
+          kost.lokasi.toLowerCase().contains(keyword);
+
+      return matchesAvailability && matchesKeyword;
+    }).toList();
+  }
+
+  Widget _buildNotificationButton() {
+    return InkWell(
+      onTap:
+          widget.onNotificationTap ??
+          () {
+            showMessage('Halaman notifikasi belum dibuat');
+          },
+      borderRadius: ThemeApp.radius(30),
+      child: const SizedBox(
+        width: 48,
+        height: 48,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              Icons.notifications_none_rounded,
+              size: 34,
+              color: ThemeApp.adminTitle,
+            ),
+            Positioned(
+              top: 5,
+              right: 6,
+              child: CircleAvatar(
+                radius: 5,
+                backgroundColor: ThemeApp.adminRed,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        const Expanded(
+          child: Text(
+            'Daftar Kost',
+            style: TextStyle(
+              fontSize: 28,
+              height: 1.1,
+              fontWeight: FontWeight.w900,
+              color: ThemeApp.adminTitle,
+            ),
+          ),
+        ),
+        _buildNotificationButton(),
+      ],
+    );
+  }
+
+  Widget _buildSearchField() {
+    return SizedBox(
+      height: 58,
+      child: TextField(
+        controller: _searchController,
+        onChanged: (_) {
+          setState(() {});
+        },
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: ThemeApp.textDark,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Cari kost anda',
+          hintStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: ThemeApp.textGrey,
+          ),
+          prefixIcon: const Padding(
+            padding: EdgeInsets.only(left: 14, right: 8),
+            child: Icon(
+              Icons.search_rounded,
+              size: 29,
+              color: ThemeApp.textGrey,
+            ),
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 52),
+          suffixIcon: _searchController.text.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {});
+                  },
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: ThemeApp.textGrey,
+                  ),
+                ),
+          filled: true,
+          fillColor: ThemeApp.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: ThemeApp.radius(32),
+            borderSide: const BorderSide(
+              color: ThemeApp.borderGrey,
+              width: 1.2,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: ThemeApp.radius(32),
+            borderSide: const BorderSide(
+              color: ThemeApp.primaryDark,
+              width: 1.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvailableFilter() {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _onlyAvailable = !_onlyAvailable;
+        });
+      },
+      borderRadius: ThemeApp.radius(30),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 19, vertical: 12),
+        decoration: BoxDecoration(
+          color: _onlyAvailable ? ThemeApp.buttonColor : ThemeApp.white,
+          borderRadius: ThemeApp.radius(30),
+          border: Border.all(
+            color: _onlyAvailable ? ThemeApp.buttonColor : ThemeApp.borderGrey,
+            width: 1.1,
+          ),
+        ),
+        child: Text(
+          'Tersedia',
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+            color: _onlyAvailable ? ThemeApp.textLight : ThemeApp.textGrey,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditButton() {
+    return InkWell(
+      onTap:
+          widget.onEditKost ??
+          () {
+            showMessage('Fitur edit kost dibuat pada tahap CRUD');
+          },
+      borderRadius: ThemeApp.radius(30),
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: ThemeApp.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: ThemeApp.borderGrey, width: 1.2),
+          boxShadow: [
+            ThemeApp.softShadow(
+              alpha: 0.04,
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.edit_outlined,
+          size: 26,
+          color: ThemeApp.textDark,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterSection() {
+    return Row(
+      children: [_buildAvailableFilter(), const Spacer(), _buildEditButton()],
+    );
+  }
+
+  Widget _buildLoading() {
+    return const Center(
+      child: CircularProgressIndicator(color: ThemeApp.primaryDark),
+    );
+  }
+
+  Widget _buildError(Object? error) {
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      color: ThemeApp.primaryDark,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(top: 120),
+        children: [
+          const Icon(
+            Icons.cloud_off_outlined,
+            size: 58,
+            color: ThemeApp.textGrey,
+          ),
+          const SizedBox(height: 16),
+          const Center(
+            child: Text(
+              'Data kost gagal dimuat',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: ThemeApp.textDark,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              error.toString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: ThemeApp.textGrey,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Center(
+            child: OutlinedButton(
+              onPressed: _refreshData,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ThemeApp.buttonColor,
+                side: const BorderSide(color: ThemeApp.buttonColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: ThemeApp.radius(20),
+                ),
+              ),
+              child: const Text('Coba lagi'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    final bool isSearching = _searchController.text.trim().isNotEmpty;
+
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      color: ThemeApp.primaryDark,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(top: 120),
+        children: [
+          const Icon(
+            Icons.apartment_outlined,
+            size: 62,
+            color: ThemeApp.lightGrey,
+          ),
+          const SizedBox(height: 14),
+          Center(
+            child: Text(
+              isSearching ? 'Kost tidak ditemukan' : 'Belum ada kost tersedia',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: ThemeApp.textDark,
+              ),
+            ),
+          ),
+          const SizedBox(height: 7),
+          Center(
+            child: Text(
+              isSearching
+                  ? 'Coba gunakan kata pencarian lainnya.'
+                  : 'Data kost akan muncul di halaman ini.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, color: ThemeApp.textGrey),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKostList(List<Kost> kosts) {
+    final List<Kost> filteredKosts = _filterKosts(kosts);
+
+    if (filteredKosts.isEmpty) {
+      return _buildEmpty();
     }
 
-    return kostList.where((kost) {
-      final name = kost.name.toLowerCase();
-      final location = kost.location.toLowerCase();
-      final description = kost.description.toLowerCase();
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      color: ThemeApp.primaryDark,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(0, 6, 0, 110),
+        itemCount: filteredKosts.length,
+        separatorBuilder: (BuildContext context, int index) {
+          return const SizedBox(height: 16);
+        },
+        itemBuilder: (BuildContext context, int index) {
+          final Kost kost = filteredKosts[index];
 
-      return name.contains(keyword) ||
-          location.contains(keyword) ||
-          description.contains(keyword);
-    }).toList();
+          return AdminKostCard(
+            kost: kost,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AdminKostDetailScreen(kostId: kost.id),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: ThemeApp.white,
-      body: SafeArea(
-        child: FutureBuilder<List<AdminKostSummary>>(
-          future: kostFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return buildLoadingState();
-            }
-
-            if (snapshot.hasError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    snapshot.error.toString(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            final kostList = filterKost(snapshot.data ?? []);
-
-            return RefreshIndicator(
-              color: ThemeApp.buttonColor,
-              onRefresh: refreshKost,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(24, 26, 24, 110),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    buildHeader(),
-                    const SizedBox(height: 24),
-                    SearchBarWidget(
-                      controller: searchController,
-                      hintText: 'Cari kost',
-                      showFilter: false,
-                      showClear: searchKeyword.isNotEmpty,
-                      height: 54,
-                      fontSize: 16,
-                      borderRadius: 18,
-                      iconColor: ThemeApp.adminPurple,
-                      showShadow: false,
-                      onChanged: (value) {
-                        setState(() {
-                          searchKeyword = value;
-                        });
-                      },
-                      onClearTap: () {
-                        searchController.clear();
-                        setState(() {
-                          searchKeyword = '';
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    buildKostList(kostList),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ),
       bottomNavigationBar: AdminBottomNav(
         currentIndex: 1,
         onTap: handleBottomNavTap,
       ),
-    );
-  }
-
-  Widget buildLoadingState() {
-    return const Center(
-      child: CircularProgressIndicator(
-        color: ThemeApp.buttonColor,
-        strokeWidth: 2,
+      floatingActionButton: FloatingActionButton(
+        onPressed:
+            widget.onAddKost ??
+            () {
+              showMessage('Halaman tambah kost dibuat pada tahap CRUD');
+            },
+        backgroundColor: ThemeApp.adminBlue,
+        foregroundColor: ThemeApp.textLight,
+        elevation: 4,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.add_rounded, size: 40),
       ),
-    );
-  }
-
-  Widget buildErrorState() {
-    return EmptyState(
-      icon: Icons.error_outline_rounded,
-      title: 'Data kost gagal dimuat',
-      message: 'Periksa koneksi atau pengaturan tabel kost.',
-      buttonText: 'Coba Lagi',
-      onButtonTap: refreshKost,
-      iconColor: ThemeApp.adminRed,
-      iconBackgroundColor: ThemeApp.adminSoftRed,
-    );
-  }
-
-  Widget buildHeader() {
-    return Row(
-      children: [
-        const Expanded(
+      body: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Daftar Kost',
-                style: TextStyle(
-                  color: ThemeApp.adminTitle,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  height: 1,
-                ),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Kelola semua data kost',
-                style: TextStyle(
-                  color: ThemeApp.adminSubtitle,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w500,
+              _buildHeader(),
+              const SizedBox(height: 28),
+              _buildSearchField(),
+              const SizedBox(height: 20),
+              _buildFilterSection(),
+              const SizedBox(height: 18),
+              Expanded(
+                child: FutureBuilder<List<Kost>>(
+                  future: _kostFuture,
+                  builder:
+                      (
+                        BuildContext context,
+                        AsyncSnapshot<List<Kost>> snapshot,
+                      ) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return _buildLoading();
+                        }
+
+                        if (snapshot.hasError) {
+                          return _buildError(snapshot.error);
+                        }
+
+                        return _buildKostList(snapshot.data ?? <Kost>[]);
+                      },
                 ),
               ),
             ],
           ),
         ),
-        GestureDetector(
-          onTap: () {
-            showMessage('Form tambah kost akan dibuat berikutnya');
-          },
-          child: Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: ThemeApp.buttonColor,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.add_rounded,
-              color: ThemeApp.white,
-              size: 30,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget buildKostList(List<AdminKostSummary> kostList) {
-    if (kostList.isEmpty) {
-      return EmptyState(
-        icon: Icons.apartment_rounded,
-        title: searchKeyword.isEmpty
-            ? 'Belum ada kost'
-            : 'Kost tidak ditemukan',
-        message: searchKeyword.isEmpty
-            ? 'Data kost yang ditambahkan admin akan tampil di sini.'
-            : 'Coba gunakan kata kunci pencarian lain.',
-        iconColor: ThemeApp.adminPurple,
-        iconBackgroundColor: ThemeApp.adminSoftPurple,
-        compact: true,
-      );
-    }
-
-    return Column(
-      children: kostList.map((kost) {
-        return buildKostCard(kost);
-      }).toList(),
-    );
-  }
-
-  Widget buildKostCard(AdminKostSummary kost) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: () {
-            showMessage('Detail kost akan dibuat berikutnya');
-          },
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: ThemeApp.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: ThemeApp.adminCardBorder, width: 1.2),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 62,
-                  height: 62,
-                  decoration: BoxDecoration(
-                    color: ThemeApp.adminSoftPurple,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Icon(
-                    Icons.apartment_rounded,
-                    color: ThemeApp.adminPurple,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(child: buildKostInfo(kost)),
-                const SizedBox(width: 10),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFF9CA0A6),
-                  size: 30,
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
-  }
-
-  Widget buildKostInfo(AdminKostSummary kost) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          kost.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: ThemeApp.adminTitle,
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          kost.location,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Color(0xFF555555),
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Rp ${formatNumber(kost.price)}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: ThemeApp.adminPurple,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.meeting_room_outlined,
-              color: kost.available > 0
-                  ? ThemeApp.adminGreen
-                  : ThemeApp.adminRed,
-              size: 18,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '${kost.available}',
-              style: TextStyle(
-                color: kost.available > 0
-                    ? ThemeApp.adminGreen
-                    : ThemeApp.adminRed,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  void showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
-    );
-  }
-
-  String formatNumber(int value) {
-    final text = value.toString();
-    final reversed = text.split('').reversed.toList();
-    final buffer = StringBuffer();
-
-    for (int i = 0; i < reversed.length; i++) {
-      if (i > 0 && i % 3 == 0) {
-        buffer.write('.');
-      }
-
-      buffer.write(reversed[i]);
-    }
-
-    return buffer.toString().split('').reversed.join();
   }
 }

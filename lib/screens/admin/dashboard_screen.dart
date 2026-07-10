@@ -98,7 +98,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onRefresh: refreshDashboard,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(24, 26, 24, 110),
+                padding: const EdgeInsets.fromLTRB(20, 26, 20, 110),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -351,7 +351,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const double gap = 14;
+        const double gap = 12;
         final double cardWidth = (constraints.maxWidth - gap) / 2;
 
         return Wrap(
@@ -367,15 +367,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: statistic.icon,
                 color: statistic.iconColor,
                 iconBackgroundColor: statistic.iconBackground,
-                height: 118,
-                borderRadius: 18,
+
+                // Ukuran card diperbesar.
+                height: 148,
+                borderRadius: 20,
+
                 showShadow: false,
                 showBorder: true,
                 circularIcon: true,
-                iconBoxSize: 54,
-                iconSize: 29,
-                titleFontSize: 15,
-                subtitleFontSize: 15,
+
+                // Ikon sedikit disesuaikan agar ruang teks lebih luas.
+                iconBoxSize: 50,
+                iconSize: 27,
+
+                titleFontSize: 14,
+                subtitleFontSize: 13.5,
+                valueFontSize: 21,
               ),
             );
           }).toList(),

@@ -1,59 +1,86 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../models/admin/dashboard.dart';
+import '../../../models/admin/kost.dart';
 
-class AdminKostService {
-  final SupabaseClient supabase;
+class KostService {
+  final SupabaseClient _supabase;
 
-  AdminKostService({SupabaseClient? supabaseClient})
-      : supabase = supabaseClient ?? Supabase.instance.client;
+  KostService({SupabaseClient? supabaseClient})
+      : _supabase = supabaseClient ?? Supabase.instance.client;
 
-  Future<List<AdminKostSummary>> getKostList() async {
-    final response = await supabase.from('kosts').select();
+  Future<List<Kost>> getAllKosts() async {
+    try {
+      final data = await _supabase
+          .from('kosts')
+          .select('''
+            id,
+            owner_id,
+            nama_kost,
+            lokasi,
+            harga,
+            deskripsi,
+            rating,
+            tersedia,
+            created_at,
+            kost_images (
+              image_url
+            )
+          ''')
+          .order('created_at', ascending: false);
 
-    return response.map<AdminKostSummary>((item) {
-      return AdminKostSummary.fromMap(Map<String, dynamic>.from(item));
-    }).toList();
+      return data.map<Kost>((item) {
+        return Kost.fromMap(Map<String, dynamic>.from(item));
+      }).toList();
+    } on PostgrestException catch (error) {
+      throw KostServiceException(
+        'Gagal mengambil data kost: ${error.message}',
+      );
+    } catch (error) {
+      throw KostServiceException(
+        'Terjadi kesalahan saat mengambil data kost: $error',
+      );
+    }
   }
 
-  Future<void> addKost({
-    required String name,
-    required String location,
-    required int price,
-    required int available,
-    required String description,
-    double rating = 0,
-  }) async {
-    await supabase.from('kosts').insert({
-      'nama_kost': name,
-      'lokasi': location,
-      'harga': price,
-      'tersedia': available,
-      'deskripsi': description,
-      'rating': rating,
-    });
-  }
+  Future<Kost> getKostById(String kostId) async {
+    try {
+      final data = await _supabase
+          .from('kosts')
+          .select('''
+            id,
+            owner_id,
+            nama_kost,
+            lokasi,
+            harga,
+            deskripsi,
+            rating,
+            tersedia,
+            created_at,
+            kost_images (
+              image_url
+            )
+          ''')
+          .eq('id', kostId)
+          .single();
 
-  Future<void> updateKost({
-    required String id,
-    required String name,
-    required String location,
-    required int price,
-    required int available,
-    required String description,
-    required double rating,
-  }) async {
-    await supabase.from('kosts').update({
-      'nama_kost': name,
-      'lokasi': location,
-      'harga': price,
-      'tersedia': available,
-      'deskripsi': description,
-      'rating': rating,
-    }).eq('id', id);
+      return Kost.fromMap(Map<String, dynamic>.from(data));
+    } on PostgrestException catch (error) {
+      throw KostServiceException(
+        'Gagal mengambil detail kost: ${error.message}',
+      );
+    } catch (error) {
+      throw KostServiceException(
+        'Terjadi kesalahan saat mengambil detail kost: $error',
+      );
+    }
   }
+}
 
-  Future<void> deleteKost(String id) async {
-    await supabase.from('kosts').delete().eq('id', id);
-  }
+class KostServiceException implements Exception {
+  final String message;
+
+  const KostServiceException(this.message);
+
+  @override
+  String toString() => message;
 }
